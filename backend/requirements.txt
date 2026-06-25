@@ -13,6 +13,10 @@ aioredis==2.0.1
 # Data processing (ETL & crawl scripts)
 httpx==0.27.0
 pandas==2.2.2
+numpy==1.26.4
+
+# Analytics (Z-score anomaly detection, Pearson correlation)
+scipy==1.13.0
 
 # Validation
 pydantic==2.7.1

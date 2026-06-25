@@ -116,10 +116,12 @@ backend/
 ├── app/
 │   ├── api/v1/
 │   │   ├── dashboard.py   (routes)
+│   │   ├── analytics.py   (routes: anomalies, correlation)
 │   │   ├── ai.py          (routes)
 │   │   └── logs.py        (routes)
 │   ├── services/
 │   │   ├── data_service.py
+│   │   ├── analytics_service.py  ← Z-score + Pearson correlation
 │   │   ├── rag_service.py
 │   │   ├── execution_service.py
 │   │   └── log_service.py
@@ -137,21 +139,32 @@ backend/
 - Mỗi endpoint đi qua: validate params → check Redis cache → query DB (nếu cache miss) → set cache → trả về
 - Không có business logic trong route handler — chỉ gọi service
 
-**2.3 WebSocket realtime**
+**2.3 Analytics endpoints (Z-score + Correlation)**
+- `GET /api/v1/analytics/anomalies` — phát hiện bất thường bằng **Rolling Z-score 7 ngày**
+  - Params: `province_id`, `metric` (pm2_5/pm10/...), `threshold` (mặc định 2.5)
+  - Response: danh sách `{time, value, z_score, province_id}` vượt ngưỡng
+  - Logic: rolling window 168h (7 ngày × 24h), điểm có `|z| > threshold` → bất thường
+- `GET /api/v1/analytics/correlation` — ma trận tương quan Pearson 7 biến
+  - Params: `province_id` (optional, nếu bỏ trống → tính toàn quốc), `start_date`, `end_date`
+  - Response: matrix `7×7` với giá trị Pearson r `[-1, 1]`
+  - Dùng `pandas.DataFrame.corr(method='pearson')`
+- Cache TTL: anomalies = 30 phút, correlation = 6 giờ (ít thay đổi)
+
+**2.4 WebSocket realtime**
 - `/ws/realtime`: emit dữ liệu AQI mới nhất mỗi 60 giây
 - Dùng `asyncio` + `broadcast` hoặc Redis pub/sub nếu cần multi-worker
 
-**2.4 AI endpoints (stub trước)**
+**2.5 AI endpoints (stub trước)**
 - `POST /api/v1/ai/chat` → trả về response cứng (dummy) để frontend làm việc song song
 - `POST /api/v1/ai/execute` → chạy code đơn giản, log kết quả
 - RAG thật sẽ wire vào ở Phase 4
 
-**2.5 Log service**
+**2.6 Log service**
 - Mọi request vào `/ai/*` đều tạo một record trong `ai_logs` ngay khi nhận
 - Update record qua các trạng thái: pending → approved → executed
 - `GET /api/v1/logs` trả về lịch sử có pagination
 
-**2.6 Error handling**
+**2.7 Error handling**
 - Global exception handler: mọi exception đều trả về format `{"error": {"code", "message", "retryable"}}`
 - Không để stack trace lộ ra response production
 
@@ -162,11 +175,14 @@ backend/
 - Pydantic v2: strict mode, `model_validator` cho business validation
 - Redis: `aioredis`, cache-aside pattern, TTL phân tầng theo loại data
 - Python: `asyncio`, `subprocess` với timeout cho execution sandbox
+- **Analytics**: `pandas` rolling window, `scipy.stats` cho Z-score; `pandas.DataFrame.corr` cho Pearson
 - Testing: `pytest` + `httpx.AsyncClient` cho API test, fixture cho DB test
 
 ### Tiêu chí hoàn thành
 
 - [ ] Tất cả endpoint dashboard trả đúng dữ liệu, Swagger UI test pass
+- [ ] `GET /analytics/anomalies` trả về danh sách đúng, có `z_score` field
+- [ ] `GET /analytics/correlation` trả về ma trận 7×7, giá trị trong [-1, 1]
 - [ ] WebSocket emit đúng, kết nối được từ browser devtools
 - [ ] Mọi lỗi đều trả về format chuẩn, không lộ stack trace
 - [ ] Cache hoạt động: request thứ 2 cùng params phải nhanh hơn request đầu ít nhất 5x
@@ -274,7 +290,10 @@ frontend/
 - Dropdown chọn metric và chọn tỉnh
 - Time-series chart với zoom/pan (Recharts `ReferenceArea` hoặc `recharts-zoom`)
 - Histogram phân phối AQI theo tháng
-- Heatmap tương quan 7 biến (dùng D3 hoặc Chart.js)
+- **Correlation Heatmap 7×7** — gọi `GET /analytics/correlation`, render bằng D3 hoặc `react-heatmap-grid`
+  - Màu sắc: gradient đỏ (tương quan âm) → trắng (0) → xanh (tương quan dương)
+  - Hover vào ô → tooltip hiển thị giá trị Pearson r và ý nghĩa (VD: "PM2.5 và PM10 tương quan rất mạnh: r = 0.87")
+  - Filter theo tỉnh/toàn quốc + date range từ global filter store
 
 **3.6 Tab So sánh**
 - Multi-select tối đa 3 tỉnh
@@ -283,18 +302,23 @@ frontend/
 - Bảng tổng hợp: min, max, mean, stddev cho từng tỉnh
 
 **3.7 Tab Cảnh báo**
-- Bảng danh sách với badge mức độ, filter theo tỉnh/mức độ
-- Timeline view: anomaly theo thời gian
-- Mỗi row có thể expand để xem context (giờ trước và sau anomaly)
+- **Z-score Anomaly Detection** — gọi `GET /analytics/anomalies`
+  - Mỗi điểm bất thường hiển thị: tỉnh, thời điểm, giá trị đo, z-score, mức độ (Cao/Rất cao)
+  - Line chart với các điểm bất thường được đánh dấu bằng `ReferenceDot` màu đỏ (Recharts)
+  - Bảng danh sách với badge mức độ (`|z| > 2.5` = Cao, `|z| > 3.5` = Rất cao), filter theo tỉnh
+  - Mỗi row expand → xem context 3 giờ trước và 3 giờ sau điểm bất thường
+  - KPI card: tổng số bất thường trong kỳ, tỉnh có nhiều bất thường nhất
 
 ### Kỹ thuật sử dụng
 
 - React: `useMemo` và `useCallback` đúng chỗ (tránh re-render không cần thiết)
 - TanStack Query: `useQuery`, `useQueries`, `staleTime`, `refetchInterval`
-- Recharts: `ComposedChart`, `ResponsiveContainer`, custom tooltip, custom legend
+- Recharts: `ComposedChart`, `ResponsiveContainer`, `ReferenceDot` (đánh dấu anomaly), custom tooltip
 - Leaflet + react-leaflet: `GeoJSON`, `choropleth`, `Popup`, `Tooltip`
 - Zustand: global filter store, slice pattern
-- Nguyên tắc trực quan hóa: đúng loại chart cho từng dữ liệu (bar cho so sánh, line cho trend, scatter cho tương quan)
+- **Correlation Heatmap**: `react-heatmap-grid` hoặc D3 custom — gradient màu phân kỳ
+- **Anomaly markers**: `ReferenceDot` trên Recharts line chart, màu đỏ với z-score trong tooltip
+- Nguyên tắc trực quan hóa: đúng loại chart cho từng dữ liệu (bar cho so sánh, line cho trend, heatmap cho tương quan)
 
 ### Tiêu chí hoàn thành
 
@@ -302,6 +326,8 @@ frontend/
 - [ ] Thay đổi filter global → tất cả chart update đồng bộ
 - [ ] Bản đồ tô màu đúng, click vào tỉnh hiện đúng dữ liệu tỉnh đó
 - [ ] WebSocket cập nhật màu bản đồ mà không reload
+- [ ] **Correlation heatmap** hiển thị đúng, hover tooltip có giá trị r và nhận xét
+- [ ] **Anomaly markers** xuất hiện đúng trên line chart, bảng có badge mức độ
 - [ ] Không có console error trong trạng thái bình thường
 - [ ] Giao diện hiển thị đúng ở độ phân giải 1920×1080 và 1366×768
 
