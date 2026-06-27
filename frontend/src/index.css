@@ -1,0 +1,3 @@
+/* Reset cơ bản — design system thật nằm trong AirvizDashboard.jsx (injected via <style> tag) */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html, body, #root { height: 100%; }
