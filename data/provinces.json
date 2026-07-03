@@ -1,0 +1,27 @@
+[
+  {
+    "Province": "Hà Nội",
+    "Latitude": 21.0245,
+    "Longitude": 105.84117
+  },
+  {
+    "Province": "Hồ Chí Minh",
+    "Latitude": 10.82302,
+    "Longitude": 106.62965
+  },
+  {
+    "Province": "Đà Nẵng",
+    "Latitude": 16.06778,
+    "Longitude": 108.22083
+  },
+  {
+    "Province": "Hải Phòng",
+    "Latitude": 20.86481,
+    "Longitude": 106.68345
+  },
+  {
+    "Province": "Cần Thơ",
+    "Latitude": 10.03711,
+    "Longitude": 105.78825
+  }
+]

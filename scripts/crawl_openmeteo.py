@@ -56,7 +56,7 @@ MAX_RETRIES = 3
 BATCH_SIZE = 1000
 
 # Đường dẫn file provinces
-PROVINCES_FILE = Path(__file__).parent / "provinces.json"
+PROVINCES_FILE = Path(__file__).parent.parent / "data" / "provinces.json"
 
 
 # ── Database ──────────────────────────────────────────────────────────────────

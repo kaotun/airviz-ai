@@ -38,7 +38,7 @@ logging.basicConfig(
 log = logging.getLogger(__name__)
 
 OPENMETEO_URL = "https://air-quality-api.open-meteo.com/v1/air-quality"
-PROVINCES_FILE = Path(__file__).parent / "provinces.json"
+PROVINCES_FILE = Path(__file__).parent.parent / "data" / "provinces.json"
 
 
 def fetch_latest(client: httpx.Client, province: dict):
