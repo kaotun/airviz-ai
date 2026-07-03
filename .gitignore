@@ -56,3 +56,9 @@ coverage.xml
 
 # ── Docker ────────────────────────────────────────────────────────────────
 docker-compose.override.yml
+
+
+# ── Data & Datasets ───────────────────────────────────────────────────────
+data/*
+!data/provinces.json
+*.csv
