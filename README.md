@@ -1,6 +1,6 @@
 # AirViz.AI
 
-> A full-stack data visualization platform and AI-powered copilot for real-time air quality monitoring across Vietnam.
+> Nền tảng trực quan hóa dữ liệu full-stack và trợ lý AI giám sát chất lượng không khí theo thời gian thực trên toàn Việt Nam.
 
 ![Tech Stack](https://img.shields.io/badge/stack-FastAPI%20%7C%20React%20%7C%20TimescaleDB%20%7C%20Redis-blue)
 ![Data Source](https://img.shields.io/badge/data-Open--Meteo%20API-green)
@@ -8,68 +8,69 @@
 
 ---
 
-## Overview
+## 📌 Tổng quan
 
-AirViz.AI collects hourly air quality data for all 63 provinces of Vietnam via the **Open-Meteo Air Quality API**, stores it in a **TimescaleDB** time-series database, and exposes it through an interactive dashboard with 5 analytical views. An integrated **AI copilot** powered by Gemini 1.5 Flash enables natural-language querying via a Text2SQL RAG engine with a Human-in-the-loop approval workflow.
+AirViz.AI thu thập dữ liệu chất lượng không khí hàng giờ của 63 tỉnh thành Việt Nam qua **Open-Meteo Air Quality API**, lưu trữ vào cơ sở dữ liệu chuỗi thời gian **TimescaleDB**, và hiển thị qua một Dashboard tương tác với 5 góc nhìn phân tích. Hệ thống tích hợp **Trợ lý AI** mạnh mẽ bằng mô hình Gemini 1.5 Flash, cho phép người dùng truy vấn dữ liệu bằng ngôn ngữ tự nhiên thông qua kỹ thuật Text2SQL RAG với cơ chế kiểm duyệt của con người.
 
-## Features
+## 🚀 Tính năng nổi bật
 
-- 📊 **5-tab interactive dashboard** — Overview, Map, Analysis, Comparison, Alerts
-- 🗺️ **Choropleth map** — Real-time AQI visualization across 63 provinces
-- 🤖 **AI Chatbox** — Text2SQL + Code generation with human approval gate
-- ⚡ **Real-time updates** — WebSocket-powered live data refresh
-- 🔍 **Global filter** — Synchronized across all charts and views
+- 📊 **Dashboard tương tác 5 tab** — Tổng quan, Bản đồ, Phân tích, So sánh, Cảnh báo.
+- 🗺️ **Bản đồ nhiệt (Choropleth map)** — Hiển thị chỉ số AQI trực tiếp trên bản đồ 63 tỉnh thành.
+- 🤖 **Trợ lý AI Chatbox** — Dịch ngôn ngữ tự nhiên sang SQL + Sinh code vẽ biểu đồ (có bước người dùng xác nhận).
+- ⚡ **Cập nhật theo thời gian thực** — Làm mới dữ liệu trực tiếp qua WebSockets.
+- 🔍 **Bộ lọc toàn cầu** — Đồng bộ hóa bộ lọc thời gian và địa điểm trên tất cả các biểu đồ.
 
-## Tech Stack
+## 🛠️ Công nghệ sử dụng
 
-| Layer | Technology |
+| Lớp (Layer) | Công nghệ |
 |---|---|
-| Frontend | React + Vite + TypeScript, TanStack Query, Zustand, Recharts, Leaflet |
-| Backend | FastAPI, asyncpg, APScheduler |
-| Database | TimescaleDB (PostgreSQL), Redis |
-| AI | Gemini 1.5 Flash, Text2SQL RAG |
-| Data Source | Open-Meteo Air Quality API (free, no API key required) |
-| Infrastructure | Docker Compose |
+| **Frontend** | React + Vite + TypeScript, TanStack Query, Zustand, Recharts, Leaflet |
+| **Backend** | FastAPI, asyncpg, APScheduler |
+| **Cơ sở dữ liệu** | TimescaleDB (PostgreSQL), Redis |
+| **AI** | Gemini 1.5 Flash, Text2SQL RAG |
+| **Nguồn dữ liệu** | Open-Meteo Air Quality API (miễn phí, không cần API key) |
+| **Triển khai** | Docker Compose |
 
-## Quick Start
+## 🚀 Hướng dẫn chạy nhanh (Windows / Docker)
+
+Yêu cầu: Máy tính đã cài đặt và bật phần mềm **Docker Desktop**.
 
 ```bash
-# 1. Clone the repository
-git clone https://github.com/kaotun/airviz-ai.git
-cd airviz-ai
+# 1. Bật toàn bộ hệ thống
+docker compose up -d --build
 
-# 2. Copy and configure environment variables
-cp .env.example .env
+# 2. Bơm dữ liệu thời tiết vào Database (Chỉ chạy 1 lần duy nhất lúc khởi tạo)
+docker compose exec backend python /scripts/crawl_openmeteo.py --start 2024-01-01 --end 2026-07-06
 
-# 3. Start all services
-make up
+# 3. Xem kết quả trên trình duyệt
+# -> Giao diện web (Frontend): http://localhost:5173
+# -> API Backend (Swagger UI): http://localhost:8080/docs
 
-# 4. Seed the database with historical data (first run only)
-make seed
-
-# 5. Open the dashboard
-# → http://localhost:5173
+# 4. Tắt hệ thống khi nghỉ ngơi (để giải phóng RAM)
+docker compose down
 ```
 
-## Project Structure
+## 📁 Cấu trúc dự án
 
-```
+```text
 airviz-ai/
-├── backend/        # FastAPI application
-├── frontend/       # React + Vite application
-├── scripts/        # Data collection & ETL scripts
-├── docs/           # Architecture decisions & data audit
+├── backend/        # Mã nguồn FastAPI
+├── frontend/       # Mã nguồn React + Vite
+├── notebooks/      # Môi trường phân tích Khoa học Dữ liệu (EDA) và thử nghiệm AI
+├── scripts/        # Các đoạn script cào và tiền xử lý dữ liệu
+├── data/           # Các file JSON cấu hình, GeoJSON bản đồ và dataset thô
+├── docs/           # Tài liệu lưu trữ quyết định kiến trúc và kiểm định dữ liệu
 ├── docker-compose.yml
 └── Makefile
 ```
 
-## Environment Variables
+## 🔐 Biến môi trường
 
-See [`.env.example`](.env.example) for the full list of required variables.
+Vui lòng xem file [`.env.example`](.env.example) để biết danh sách các biến môi trường cần thiết cho dự án.
 
-## Documentation
+## 📚 Tài liệu tham khảo
 
-- [System Architecture](ARCHITECTURE.md)
-- [Development Phases](PHASES.md)
-- [Data Collection Plan](docs/data-plan.md)
-- [Data Audit Log](docs/data-audit.md)
+- [Kiến trúc hệ thống (Architecture)](ARCHITECTURE.md)
+- [Các giai đoạn phát triển (Phases)](PHASES.md)
+- [Kế hoạch thu thập dữ liệu](docs/data-plan.md)
+- [Nhật ký kiểm định dữ liệu (Audit Log)](docs/data-audit.md)

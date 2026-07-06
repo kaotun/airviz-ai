@@ -47,7 +47,7 @@ HOURLY_VARIABLES = [
 ]
 
 # Thời gian nghỉ giữa mỗi request để tránh rate limit (giây)
-REQUEST_DELAY_S = 0.15
+REQUEST_DELAY_S = 1.2
 
 # Số lần retry tối đa nếu request thất bại
 MAX_RETRIES = 3
@@ -119,6 +119,20 @@ def upsert_readings(conn, rows: list[tuple]):
 
 
 # ── API ───────────────────────────────────────────────────────────────────────
+def date_chunks(start_str, end_str, months=6):
+    """Chia khoảng thời gian dài thành các chunk nhỏ (mặc định 6 tháng)."""
+    start = datetime.strptime(start_str, "%Y-%m-%d")
+    end = datetime.strptime(end_str, "%Y-%m-%d")
+    chunks = []
+    current = start
+    while current < end:
+        next_chunk = current + timedelta(days=months * 30)
+        chunk_end = min(next_chunk - timedelta(days=1), end)
+        chunks.append((current.strftime("%Y-%m-%d"), chunk_end.strftime("%Y-%m-%d")))
+        current = next_chunk
+    return chunks
+
+
 def fetch_air_quality(
     client: httpx.Client,
     province: dict,
@@ -127,55 +141,67 @@ def fetch_air_quality(
 ) -> pd.DataFrame | None:
     """
     Gọi Open-Meteo API cho một tỉnh trong khoảng thời gian cho trước.
-    Tự động retry tối đa MAX_RETRIES lần với exponential backoff.
-    Trả về DataFrame hoặc None nếu thất bại.
+    Tự động chia nhỏ thành các chunk 6 tháng để tránh lỗi response quá lớn.
     """
-    params = {
-        "latitude": province["latitude"],
-        "longitude": province["longitude"],
-        "hourly": ",".join(HOURLY_VARIABLES),
-        "start_date": start_date,
-        "end_date": end_date,
-        "timezone": "Asia/Ho_Chi_Minh",
-    }
+    all_chunks = []
 
-    for attempt in range(1, MAX_RETRIES + 1):
-        try:
-            response = client.get(OPENMETEO_URL, params=params, timeout=30.0)
-            response.raise_for_status()
-            data = response.json()
+    for chunk_start, chunk_end in date_chunks(start_date, end_date, months=6):
+        params = {
+            "latitude": province["Latitude"],
+            "longitude": province["Longitude"],
+            "hourly": ",".join(HOURLY_VARIABLES),
+            "start_date": chunk_start,
+            "end_date": chunk_end,
+            "timezone": "Asia/Ho_Chi_Minh",
+        }
 
-            hourly = data.get("hourly", {})
-            if not hourly or "time" not in hourly:
+        chunk_df = None
+        for attempt in range(1, MAX_RETRIES + 1):
+            try:
+                response = client.get(OPENMETEO_URL, params=params, timeout=60.0)
+                response.raise_for_status()
+                data = response.json()
+
+                hourly = data.get("hourly", {})
+                if not hourly or "time" not in hourly:
+                    log.warning(
+                        "[%s] Không có dữ liệu hourly trong response chunk %s-%s",
+                        province["Province"], chunk_start, chunk_end
+                    )
+                    break
+
+                df = pd.DataFrame(hourly)
+                df["time"] = pd.to_datetime(df["time"])
+                df["province_id"] = province["Code"]
+                chunk_df = df
+                break  # Thành công, thoát vòng lặp retry
+
+            except httpx.HTTPStatusError as e:
                 log.warning(
-                    "[%s] Không có dữ liệu hourly trong response",
-                    province["name"],
+                    "[%s][%s-%s] Lần %d/%d — HTTP %d: %s",
+                    province["Province"], chunk_start, chunk_end, attempt, MAX_RETRIES,
+                    e.response.status_code, e.response.text[:200],
                 )
-                return None
+            except (httpx.RequestError, httpx.TimeoutException) as e:
+                log.warning(
+                    "[%s][%s-%s] Lần %d/%d — Request error: %s",
+                    province["Province"], chunk_start, chunk_end, attempt, MAX_RETRIES, str(e),
+                )
 
-            df = pd.DataFrame(hourly)
-            df["time"] = pd.to_datetime(df["time"])
-            df["province_id"] = province["id"]
-            return df
+            if attempt < MAX_RETRIES:
+                wait = 2 ** attempt
+                log.info("[%s] Chờ %ds trước khi retry...", province["Province"], wait)
+                time.sleep(wait)
 
-        except httpx.HTTPStatusError as e:
-            log.warning(
-                "[%s] Lần %d/%d — HTTP %d: %s",
-                province["name"], attempt, MAX_RETRIES,
-                e.response.status_code, e.response.text[:200],
-            )
-        except (httpx.RequestError, httpx.TimeoutException) as e:
-            log.warning(
-                "[%s] Lần %d/%d — Request error: %s",
-                province["name"], attempt, MAX_RETRIES, str(e),
-            )
+        if chunk_df is not None:
+            all_chunks.append(chunk_df)
+            
+        time.sleep(REQUEST_DELAY_S)
 
-        if attempt < MAX_RETRIES:
-            wait = 2 ** attempt  # 2s, 4s
-            log.info("[%s] Chờ %ds trước khi retry...", province["name"], wait)
-            time.sleep(wait)
-
-    log.error("[%s] Thất bại sau %d lần thử, bỏ qua.", province["name"], MAX_RETRIES)
+    if all_chunks:
+        return pd.concat(all_chunks, ignore_index=True)
+    
+    log.error("[%s] Thất bại tải dữ liệu.", province["Province"])
     return None
 
 
@@ -248,65 +274,70 @@ def main():
     log.info("═" * 60)
     log.info("AirViz.AI — Open-Meteo Historical Crawler")
     log.info("Khoảng thời gian: %s → %s", args.start, args.end)
-    log.info("═" * 60)
 
-    # Load danh sách tỉnh
-    provinces: list[dict] = json.loads(PROVINCES_FILE.read_text(encoding="utf-8"))
+    if not PROVINCES_FILE.exists():
+        log.error("Không tìm thấy file %s. Chạy notebook 01 để tạo trước.", PROVINCES_FILE)
+        return
+
+    with open(PROVINCES_FILE, "r", encoding="utf-8") as f:
+        provinces = json.load(f)
+
+    # Lọc những tỉnh chưa có tọa độ
+    valid_provinces = [p for p in provinces if p.get("Latitude") and p.get("Longitude")]
+    log.info("Load thành công %d/%d tỉnh có tọa độ.", len(valid_provinces), len(provinces))
+
     if args.province_id:
-        provinces = [p for p in provinces if p["id"] == args.province_id]
-        if not provinces:
-            log.error("Không tìm thấy tỉnh với id=%d", args.province_id)
-            return
+        valid_provinces = [p for p in valid_provinces if int(p["Code"]) == args.province_id]
+        log.info("Debug mode: Chỉ crawl tỉnh ID %d", args.province_id)
 
-    # Kết nối DB
-    conn = get_db_connection()
-    log.info("✓ Kết nối TimescaleDB thành công")
+    # Khởi tạo connection DB
+    try:
+        conn = get_db_connection()
+        log.info("Kết nối TimescaleDB thành công.")
+    except Exception as e:
+        log.error("Lỗi kết nối DB: %s. Chắc chắn container timescaledb đang chạy.", e)
+        return
 
-    total_inserted = 0
-    failed_provinces = []
+    success_count = 0
+    total_rows = 0
 
-    with httpx.Client() as client:
-        for idx, province in enumerate(provinces, start=1):
+    with httpx.Client(timeout=60.0) as client:
+        for idx, province in enumerate(valid_provinces, 1):
             log.info(
-                "[%d/%d] Đang crawl: %s ...",
-                idx, len(provinces), province["name"],
+                "[%02d/%d] Đang tải: %-20s",
+                idx, len(valid_provinces), province["Province"]
             )
 
-            # Upsert province record
-            upsert_province(conn, province)
+            # 1. Upsert tỉnh vào DB
+            slug = province["Province"].lower().replace(" ", "-").replace("đ", "d")
+            db_province = {
+                "id": int(province["Code"]),
+                "slug": slug,
+                "name": province["Province"],
+                "latitude": province["Latitude"],
+                "longitude": province["Longitude"],
+            }
+            upsert_province(conn, db_province)
 
-            # Gọi API
+            # 2. Fetch dữ liệu API (sử dụng chunking)
             df = fetch_air_quality(client, province, args.start, args.end)
-            if df is None:
-                failed_provinces.append(province["name"])
-                time.sleep(REQUEST_DELAY_S)
-                continue
 
-            # Transform & insert
-            rows = df_to_rows(df)
-            if rows:
+            if df is not None and not df.empty:
+                # 3. Transform & Clean
+                rows = df_to_rows(df)
+
+                # 4. Insert DB
                 upsert_readings(conn, rows)
-                total_inserted += len(rows)
-                log.info(
-                    "  ✓ Inserted %d dòng (tổng: %d)",
-                    len(rows), total_inserted,
-                )
+                success_count += 1
+                total_rows += len(rows)
+                log.info("   ↳ Đã lưu %d dòng vào DB.", len(rows))
             else:
-                log.warning("  ⚠ Không có dòng hợp lệ sau khi làm sạch.")
-
-            # Nghỉ giữa các request
-            time.sleep(REQUEST_DELAY_S)
+                log.warning("   ↳ Bỏ qua do không có dữ liệu.")
 
     conn.close()
-
-    # Tổng kết
     log.info("═" * 60)
-    log.info("Hoàn thành!")
-    log.info("  Tổng số dòng đã insert: %d", total_inserted)
-    log.info("  Tỉnh thành công: %d / %d", len(provinces) - len(failed_provinces), len(provinces))
-    if failed_provinces:
-        log.warning("  Tỉnh thất bại: %s", ", ".join(failed_provinces))
-    log.info("═" * 60)
+    log.info("Hoàn thành! Thành công: %d/%d tỉnh. Tổng rows: %s",
+             success_count, len(valid_provinces), f"{total_rows:,}")
 
 
 if __name__ == "__main__":

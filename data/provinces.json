@@ -1,27 +1,380 @@
 [
   {
+    "Code": "01",
     "Province": "Hà Nội",
-    "Latitude": 21.0245,
-    "Longitude": 105.84117
+    "Latitude": 21.0283,
+    "Longitude": 105.854
   },
   {
-    "Province": "Hồ Chí Minh",
-    "Latitude": 10.82302,
-    "Longitude": 106.62965
+    "Code": "02",
+    "Province": "Thành phố Hồ Chí Minh",
+    "Latitude": 10.7737,
+    "Longitude": 106.7166
   },
   {
-    "Province": "Đà Nẵng",
-    "Latitude": 16.06778,
-    "Longitude": 108.22083
-  },
-  {
+    "Code": "03",
     "Province": "Hải Phòng",
-    "Latitude": 20.86481,
-    "Longitude": 106.68345
+    "Latitude": 20.8831,
+    "Longitude": 106.679
   },
   {
+    "Code": "04",
+    "Province": "Đà Nẵng",
+    "Latitude": 16.0685,
+    "Longitude": 108.224
+  },
+  {
+    "Code": "05",
+    "Province": "Hà Giang",
+    "Latitude": 22.8168,
+    "Longitude": 104.9505
+  },
+  {
+    "Code": "06",
+    "Province": "Cao Bằng",
+    "Latitude": 22.7427,
+    "Longitude": 106.1061
+  },
+  {
+    "Code": "07",
+    "Province": "Lai Châu",
+    "Latitude": 22.2922,
+    "Longitude": 103.1799
+  },
+  {
+    "Code": "08",
+    "Province": "Lào Cai",
+    "Latitude": 22.3069,
+    "Longitude": 104.183
+  },
+  {
+    "Code": "09",
+    "Province": "Tuyên Quang",
+    "Latitude": 22.3382,
+    "Longitude": 105.0716
+  },
+  {
+    "Code": "10",
+    "Province": "Lạng Sơn",
+    "Latitude": 21.8488,
+    "Longitude": 106.6141
+  },
+  {
+    "Code": "11",
+    "Province": "Bắc Kạn",
+    "Latitude": 22.2729,
+    "Longitude": 105.8565
+  },
+  {
+    "Code": "12",
+    "Province": "Thái Nguyên",
+    "Latitude": 21.9611,
+    "Longitude": 105.8441
+  },
+  {
+    "Code": "13",
+    "Province": "Yên Bái",
+    "Latitude": 21.8091,
+    "Longitude": 104.5183
+  },
+  {
+    "Code": "14",
+    "Province": "Sơn La",
+    "Latitude": 21.2277,
+    "Longitude": 104.1576
+  },
+  {
+    "Code": "15",
+    "Province": "Phú Thọ",
+    "Latitude": 21.3008,
+    "Longitude": 105.135
+  },
+  {
+    "Code": "16",
+    "Province": "Vĩnh Phúc",
+    "Latitude": 21.308,
+    "Longitude": 105.5926
+  },
+  {
+    "Code": "17",
+    "Province": "Quảng Ninh",
+    "Latitude": 21.1718,
+    "Longitude": 107.2013
+  },
+  {
+    "Code": "18",
+    "Province": "Bắc Giang",
+    "Latitude": 21.374,
+    "Longitude": 106.4663
+  },
+  {
+    "Code": "19",
+    "Province": "Bắc Ninh",
+    "Latitude": 21.3282,
+    "Longitude": 106.4625
+  },
+  {
+    "Code": "21",
+    "Province": "Hải Dương",
+    "Latitude": 20.9333,
+    "Longitude": 106.3333
+  },
+  {
+    "Code": "22",
+    "Province": "Hưng Yên",
+    "Latitude": 20.6066,
+    "Longitude": 106.2843
+  },
+  {
+    "Code": "23",
+    "Province": "Hòa Bình",
+    "Latitude": 20.7091,
+    "Longitude": 105.2576
+  },
+  {
+    "Code": "24",
+    "Province": "Hà Nam",
+    "Latitude": 20.534,
+    "Longitude": 105.981
+  },
+  {
+    "Code": "25",
+    "Province": "Nam Định",
+    "Latitude": 19.9953,
+    "Longitude": 106.4858
+  },
+  {
+    "Code": "26",
+    "Province": "Thái Bình",
+    "Latitude": 20.4031,
+    "Longitude": 106.5942
+  },
+  {
+    "Code": "27",
+    "Province": "Ninh Bình",
+    "Latitude": 20.2573,
+    "Longitude": 105.9719
+  },
+  {
+    "Code": "28",
+    "Province": "Thanh Hóa",
+    "Latitude": 19.9782,
+    "Longitude": 105.4816
+  },
+  {
+    "Code": "29",
+    "Province": "Nghệ An",
+    "Latitude": 19.1976,
+    "Longitude": 105.0607
+  },
+  {
+    "Code": "30",
+    "Province": "Hà Tĩnh",
+    "Latitude": 18.3505,
+    "Longitude": 105.7623
+  },
+  {
+    "Code": "31",
+    "Province": "Quảng Bình",
+    "Latitude": 17.5157,
+    "Longitude": 106.6225
+  },
+  {
+    "Code": "32",
+    "Province": "Quảng Trị",
+    "Latitude": 17.2167,
+    "Longitude": 106.9548
+  },
+  {
+    "Code": "33",
+    "Province": "Thừa Thiên Huế",
+    "Latitude": 16.4639,
+    "Longitude": 107.5863
+  },
+  {
+    "Code": "34",
+    "Province": "Quảng Nam",
+    "Latitude": 11.9537,
+    "Longitude": 108.4306
+  },
+  {
+    "Code": "35",
+    "Province": "Quảng Ngãi",
+    "Latitude": 14.9954,
+    "Longitude": 108.6917
+  },
+  {
+    "Code": "36",
+    "Province": "Kon Tum",
+    "Latitude": 14.6995,
+    "Longitude": 107.9324
+  },
+  {
+    "Code": "37",
+    "Province": "Bình Định",
+    "Latitude": 14.1087,
+    "Longitude": 109.1146
+  },
+  {
+    "Code": "38",
+    "Province": "Gia Lai",
+    "Latitude": 14.0201,
+    "Longitude": 108.6355
+  },
+  {
+    "Code": "39",
+    "Province": "Phú Yên",
+    "Latitude": 13.1999,
+    "Longitude": 109.239
+  },
+  {
+    "Code": "40",
+    "Province": "Đắk Lắk",
+    "Latitude": 12.8742,
+    "Longitude": 108.7979
+  },
+  {
+    "Code": "41",
+    "Province": "Khánh Hòa",
+    "Latitude": 12.2981,
+    "Longitude": 108.995
+  },
+  {
+    "Code": "42",
+    "Province": "Lâm Đồng",
+    "Latitude": 11.6615,
+    "Longitude": 108.1335
+  },
+  {
+    "Code": "43",
+    "Province": "Bình Phước",
+    "Latitude": 11.8,
+    "Longitude": 106.9151
+  },
+  {
+    "Code": "44",
+    "Province": "Bình Dương",
+    "Latitude": 11.1826,
+    "Longitude": 106.6738
+  },
+  {
+    "Code": "45",
+    "Province": "Ninh Thuận",
+    "Latitude": 11.4639,
+    "Longitude": 109.1317
+  },
+  {
+    "Code": "46",
+    "Province": "Tây Ninh",
+    "Latitude": 11.0801,
+    "Longitude": 106.2611
+  },
+  {
+    "Code": "47",
+    "Province": "Bình Thuận",
+    "Latitude": 10.9686,
+    "Longitude": 108.0033
+  },
+  {
+    "Code": "48",
+    "Province": "Đồng Nai",
+    "Latitude": 11.4388,
+    "Longitude": 107.1118
+  },
+  {
+    "Code": "49",
+    "Province": "Long An",
+    "Latitude": 10.4808,
+    "Longitude": 107.2009
+  },
+  {
+    "Code": "50",
+    "Province": "Đồng Tháp",
+    "Latitude": 10.4252,
+    "Longitude": 105.9271
+  },
+  {
+    "Code": "51",
+    "Province": "An Giang",
+    "Latitude": 10.3189,
+    "Longitude": 105.0432
+  },
+  {
+    "Code": "52",
+    "Province": "Bà Rịa - Vũng Tàu",
+    "Latitude": 10.4963,
+    "Longitude": 107.1688
+  },
+  {
+    "Code": "53",
+    "Province": "Tiền Giang",
+    "Latitude": 10.7804,
+    "Longitude": 105.3032
+  },
+  {
+    "Code": "54",
+    "Province": "Kiên Giang",
+    "Latitude": 9.7668,
+    "Longitude": 104.4726
+  },
+  {
+    "Code": "55",
     "Province": "Cần Thơ",
-    "Latitude": 10.03711,
-    "Longitude": 105.78825
+    "Latitude": 10.0362,
+    "Longitude": 105.7873
+  },
+  {
+    "Code": "56",
+    "Province": "Bến Tre",
+    "Latitude": 9.8837,
+    "Longitude": 106.734
+  },
+  {
+    "Code": "57",
+    "Province": "Vĩnh Long",
+    "Latitude": 10.0468,
+    "Longitude": 106.2947
+  },
+  {
+    "Code": "58",
+    "Province": "Trà Vinh",
+    "Latitude": 9.5815,
+    "Longitude": 106.5307
+  },
+  {
+    "Code": "59",
+    "Province": "Sóc Trăng",
+    "Latitude": 9.6033,
+    "Longitude": 105.98
+  },
+  {
+    "Code": "60",
+    "Province": "Bạc Liêu",
+    "Latitude": 8.8961,
+    "Longitude": 105.697
+  },
+  {
+    "Code": "61",
+    "Province": "Cà Mau",
+    "Latitude": 9.018,
+    "Longitude": 105.087
+  },
+  {
+    "Code": "62",
+    "Province": "Điện Biên",
+    "Latitude": 21.6547,
+    "Longitude": 103.2169
+  },
+  {
+    "Code": "63",
+    "Province": "Đắk Nông",
+    "Latitude": 12.2807,
+    "Longitude": 107.7426
+  },
+  {
+    "Code": "64",
+    "Province": "Hậu Giang",
+    "Latitude": 9.7881,
+    "Longitude": 105.639
   }
 ]

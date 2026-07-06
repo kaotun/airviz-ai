@@ -1,17 +1,33 @@
-# AirViz Data Science & AI Research
+# AirViz — Data Science & AI Research
 
-Thư mục này chứa các Jupyter Notebooks mô phỏng quy trình nghiên cứu Khoa học dữ liệu và thử nghiệm AI (LLM) dành riêng cho bài toán chất lượng không khí tại Việt Nam của dự án AirViz.
+Thư mục này chứa các Jupyter Notebooks mô phỏng quy trình nghiên cứu Khoa học dữ liệu và thử nghiệm AI dành riêng cho bài toán chất lượng không khí tại Việt Nam của dự án AirViz.
 
 ## Cấu trúc Notebooks
 
-- **`01_data_collection_openmeteo.ipynb`**: Thử nghiệm và thu thập dữ liệu lịch sử từ API Open-Meteo cho 63 tỉnh thành. Dùng để hiểu cấu trúc JSON trả về và xây dựng logic cho script `crawl_openmeteo.py`.
-- **`02_eda_vietnam_aqi.ipynb`**: Phân tích khám phá dữ liệu (EDA) chất lượng không khí tại Việt Nam. Trực quan hóa phân phối PM2.5 theo vùng miền (Bắc/Trung/Nam), phân tích tính mùa vụ, và đánh giá mối tương quan giữa nhiệt độ, độ ẩm với nồng độ bụi mịn.
-- **`03_anomaly_detection.ipynb`**: Xây dựng và thử nghiệm thuật toán phát hiện bất thường (Anomaly Detection) trong chuỗi thời gian AQI. Thuật toán này sẽ là cốt lõi cho chức năng hiển thị Cảnh báo (Alerts) trên Dashboard khi có đợt ô nhiễm đột biến.
-- **`04_llm_text2sql_prototyping.ipynb`**: Môi trường thử nghiệm prompt engineering cho Gemini 1.5 Flash. Thử nghiệm việc dịch các câu hỏi tự nhiên tiếng Việt (VD: "Tỉnh nào ô nhiễm nhất hôm qua?") thành câu truy vấn SQL (Text2SQL) tương thích với cấu trúc của TimescaleDB, chuẩn bị cho tính năng AI Chatbox.
+| File | Mô tả |
+|---|---|
+| **`00_api_exploration.ipynb`** | Khám phá API sơ khởi: thử nghiệm Mapbox Geocoding và Open-Meteo, hiểu cấu trúc JSON trả về trước khi xây dựng pipeline chính thức. |
+| **`01_data_collection.ipynb`** | Thu thập dữ liệu không khí lịch sử (hourly, 1 năm) cho 63 tỉnh thành từ Open-Meteo Air Quality API. Geocoding tọa độ bằng OpenStreetMap (không cần API key). Xuất ra `data/vietnam_air_quality_dataset.csv`. |
+| **`02_data_preprocessing.ipynb`** | Tiền xử lý và làm sạch dữ liệu: kiểm tra và xử lý giá trị NULL, chuẩn hóa kiểu dữ liệu, thêm cột phân vùng (Bắc/Trung/Nam), loại bỏ outlier bất hợp lý. Xuất ra `data/vietnam_aqi_cleaned.csv`. |
+| **`03_exploratory_data_analysis.ipynb`** | Phân tích khám phá dữ liệu (EDA): phân phối PM2.5 theo vùng miền, phân tích xu hướng theo tháng/mùa, ma trận tương quan Pearson giữa 8 chỉ số, top tỉnh ô nhiễm nhất. |
+
+## Thứ tự chạy
+
+```
+00_api_exploration  (tham khảo, không bắt buộc)
+        ↓
+01_data_collection  → tạo ra data/vietnam_air_quality_dataset.csv
+        ↓
+02_data_preprocessing → tạo ra data/vietnam_aqi_cleaned.csv
+        ↓
+03_exploratory_data_analysis → tạo ra các biểu đồ và phân tích
+```
 
 ## Cách sử dụng
 
-Bạn có thể mở và chạy các notebook này trong quá trình nghiên cứu, tinh chỉnh thuật toán trước khi đem tích hợp chính thức vào Backend (FastAPI).
 1. Kích hoạt môi trường ảo: `.\.venv\Scripts\activate`
-2. Cài đặt các thư viện Data Science (nếu chưa có): `pip install jupyterlab pandas matplotlib seaborn scikit-learn`
-3. Chạy lệnh: `jupyter lab` và điều hướng đến thư mục này.
+2. Cài đặt thư viện: `pip install jupyter pandas matplotlib seaborn requests`
+3. Mở Jupyter: `jupyter notebook` hoặc dùng VS Code với extension Jupyter
+4. Chạy theo thứ tự từ trên xuống dưới
+
+> **Lưu ý:** Notebook `01_data_collection` cần kết nối Internet để gọi API. Thời gian chạy ước tính ~15 phút do giới hạn tốc độ của OpenStreetMap (1.2s/tỉnh × 63 tỉnh).
