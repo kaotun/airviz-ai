@@ -8,7 +8,7 @@ import {
 import { useQuery } from '@tanstack/react-query';
 import { dashboardApi, analyticsApi } from './api/dashboard';
 import { useFilterStore } from './store/filterStore';
-
+import VietnamMap from './components/map/VietnamMap';
 // ─── COLORS ───────────────────────────────────────────────────────────────────
 const C = {
   bg: "#050a14",
@@ -661,31 +661,9 @@ const MapTab = () => {
       <section>
         <SectionHeader title="Bản đồ Chất lượng Không khí" sub="Nhấp vào tỉnh để xem chi tiết"/>
         <div style={{display:"grid",gridTemplateColumns:"45% 55%",gap:20}}>
-          {/* SVG Map */}
-          <div style={{...glassCard,padding:16}}>
-            <svg viewBox="0 0 340 550" style={{width:"100%",height:460}}>
-              {/* Vietnam simplified shape */}
-              <path d="M200,20 Q240,30 260,60 Q280,90 270,120 Q280,150 270,180 Q280,220 260,260 Q270,300 250,330 Q260,360 240,390 Q250,420 230,450 Q220,480 200,500 Q180,480 170,450 Q150,420 160,390 Q140,360 150,330 Q130,300 140,260 Q120,220 130,180 Q120,150 130,120 Q120,90 140,60 Q160,30 200,20Z"
-                fill="rgba(56,189,248,0.04)" stroke="rgba(56,189,248,0.2)" strokeWidth={1}/>
-              {vnProvinces.map(p=>(
-                <g key={p.name} onClick={()=>setSelectedName(p.name)} style={{cursor:"pointer"}}>
-                  <circle cx={p.x} cy={p.y} r={selectedName===p.name?14:10} fill={aqiColor(p.aqi)} fillOpacity={0.8} stroke={selectedName===p.name?C.sky:"rgba(255,255,255,0.2)"} strokeWidth={selectedName===p.name?2:0.5}/>
-                  <text x={p.x} y={p.y+4} textAnchor="middle" fontSize={7} fill="#fff" fontWeight="bold">{p.aqi || '--'}</text>
-                  {selectedName===p.name&&(
-                    <text x={p.x} y={p.y+22} textAnchor="middle" fontSize={9} fill={C.sky}>{p.name}</text>
-                  )}
-                </g>
-              ))}
-              {/* Legend */}
-              <g transform="translate(10,460)">
-                {AQI_COLORS.map((c,i)=>(
-                  <g key={i} transform={`translate(${i*50},0)`}>
-                    <rect width={14} height={10} rx={2} fill={c}/>
-                    <text x={16} y={9} fontSize={8} fill={C.muted}>{AQI_LABELS[i].slice(0,3)}</text>
-                  </g>
-                ))}
-              </g>
-            </svg>
+          {/* Leaflet Map */}
+          <div style={{...glassCard,padding:0, position:"relative", overflow:"hidden", height: 460}}>
+             <VietnamMap onProvinceClick={(name) => setSelectedName(name)} />
           </div>
 
           {/* Province detail */}
