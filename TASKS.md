@@ -1,7 +1,36 @@
-# 📋 AirViz.AI — Phân Công Nhiệm Vụ
+﻿# 📋 AirViz.AI — Phân Công Nhiệm Vụ
 
-> **Cập nhật lần cuối:** 06/07/2026  
-> **Trạng thái dự án:** Hạ tầng ✅ | Dữ liệu ✅ | Backend API 🟡 | Frontend 🔴 | AI Chatbox 🔴
+> **Cập nhật lần cuối:** 08/07/2026  
+> **Trạng thái dự án:** Hạ tầng ✅ | Dữ liệu ✅ | Backend API 🟡 | Frontend 🟡 | AI Chatbox 🔴
+
+---
+
+## 📂 Cấu trúc Frontend hiện tại
+
+```
+frontend/src/
+├── AirvizDashboard.jsx         # Shell chính (navbar, filter bar, tab routing)
+├── main.tsx                    # Entry point React
+├── index.css                   # Global styles
+├── api/
+│   ├── client.ts               # Axios base client
+│   └── dashboard.ts            # Tất cả API calls (dashboardApi, analyticsApi)
+├── store/
+│   └── filterStore.ts          # Zustand global state
+├── utils/
+│   └── dashboardConstants.jsx  # Màu sắc, mock data, shared UI components (KPICard, Sparkline...)
+├── components/
+│   ├── map/
+│   │   └── VietnamMap.tsx      # Leaflet choropleth map component
+│   └── tabs/
+│       ├── OverviewTab.jsx     # Tab Tổng quan
+│       ├── MapTab.jsx          # Tab Bản đồ
+│       ├── AnalysisTab.jsx     # Tab Phân tích
+│       ├── CompareTab.jsx      # Tab So sánh
+│       └── AlertsTab.jsx       # Tab Cảnh báo
+└── assets/
+    └── hero.png
+```
 
 ---
 
@@ -15,7 +44,8 @@
 | **Backend cơ bản** | FastAPI chạy được, Swagger UI ở `http://localhost:8080/docs` |
 | **API Tổng quan** | `/dashboard/overview`, `/dashboard/map`, `/dashboard/trend`, `/dashboard/top-polluted` hoạt động |
 | **Analytics backend** | Z-score anomaly detection & Pearson correlation đã có logic (`analytics_service.py`) |
-| **Tab Tổng quan** | Đã có KPI cards, line chart xu hướng, top 5 tỉnh (`Overview.tsx`) |
+| **Dashboard shell** | Navbar, filter bar, tab navigation, dark theme (`AirvizDashboard.jsx`) |
+| **Tab Tổng quan** | KPI cards, line chart xu hướng, top 5 tỉnh (`OverviewTab.jsx`) |
 | **README** | Hướng dẫn chạy dự án bằng tiếng Việt |
 
 ---
@@ -25,28 +55,31 @@
 ---
 
 ### 👤 Thành viên 1 — Frontend: Tab Bản đồ
-**File cần sửa:** `frontend/src/pages/MapView.tsx` *(hiện chỉ là placeholder)*
+**File chính:** `frontend/src/components/tabs/MapTab.jsx`  
+**Component bản đồ:** `frontend/src/components/map/VietnamMap.tsx`
 
 **Danh sách việc cần làm:**
-- [ ] Tải file `vietnam.geojson` (GeoJSON 63 tỉnh) và đặt vào `frontend/public/`
+- [x] Tải file `vietnam.geojson` (GeoJSON 63 tỉnh) và đặt vào `frontend/public/`
   - Nguồn tham khảo: https://github.com/ThangLeQuoc/vietnamese-provinces-database
-- [ ] Cài thư viện: `npm install leaflet react-leaflet @types/leaflet`
-- [ ] Tạo component `VietnamMap.tsx` vẽ bản đồ choropleth (tô màu theo 6 mức AQI)
-- [ ] Tô màu từng tỉnh theo giá trị AQI thật từ API `/dashboard/map`
-  - 🟢 Tốt (0–50): `#00e400`
-  - 🟡 Trung bình (51–100): `#ffff00`
-  - 🟠 Không lành mạnh nhóm nhạy cảm (101–150): `#ff7e00`
-  - 🔴 Không lành mạnh (151–200): `#ff0000`
-  - 🟣 Rất không lành mạnh (201–300): `#8f3f97`
-  - 🟤 Nguy hiểm (301+): `#7e0023`
-- [ ] Click vào tỉnh → gọi API `/dashboard/province/{id}` → hiển thị panel chi tiết bên phải
-- [ ] Thêm legend màu sắc AQI vào góc bản đồ
-- [ ] Tooltip khi hover vào tỉnh: tên tỉnh + AQI hiện tại
+- [x] Cài thư viện: `npm install leaflet react-leaflet @types/leaflet`
+- [x] Tạo component `VietnamMap.tsx` vẽ bản đồ choropleth (tô màu theo 6 mức AQI)
+- [x] Tô màu từng tỉnh theo giá trị AQI thật từ API `/dashboard/map`
+  - 🟢 Tốt (0–50): `#34d399`
+  - 🟡 Trung bình (51–100): `#a3e635`
+  - 🟠 Không lành mạnh nhóm nhạy cảm (101–150): `#fbbf24`
+  - 🔴 Không lành mạnh (151–200): `#f97316`
+  - 🟣 Rất không lành mạnh (201–300): `#f87171`
+  - 🟤 Nguy hiểm (301+): `#dc2626`
+- [x] Click vào tỉnh → gọi API `/dashboard/province/{id}` → hiển thị panel chi tiết bên phải (`MapTab.jsx`)
+- [x] Thêm legend màu sắc AQI vào góc bản đồ
+- [x] Tooltip khi hover vào tỉnh: tên tỉnh + AQI hiện tại
 
 ---
 
 ### 👤 Thành viên 2 — Frontend: Tab Phân tích
-**File cần sửa:** `frontend/src/pages/Analysis.tsx` *(hiện chỉ là placeholder)*
+**File chính:** `frontend/src/components/tabs/AnalysisTab.jsx`  
+**Shared utilities:** `frontend/src/utils/dashboardConstants.jsx` (import màu, helper)  
+**API calls:** `frontend/src/api/dashboard.ts` (dùng `analyticsApi`)
 
 **Danh sách việc cần làm:**
 - [ ] Cài thư viện: `npm install react-heatmap-grid`
@@ -57,27 +90,27 @@
   - Gọi API: `GET /api/v1/analytics/correlation?province_id=...&start_date=...&end_date=...`
   - Màu gradient: đỏ (tương quan âm) → trắng (0) → xanh (tương quan dương)
   - Hover vào ô → tooltip: *"PM2.5 và PM10 tương quan rất mạnh: r = 0.87"*
-- [ ] Kết nối với Global Filter Store (Zustand) để filter tỉnh/thời gian đồng bộ toàn dashboard
+- [ ] Kết nối với `useFilterStore` (từ `frontend/src/store/filterStore.ts`) để filter tỉnh/thời gian đồng bộ toàn dashboard
 
 ---
 
 ### 👤 Thành viên 3 — Frontend: Tab So sánh & Tab Cảnh báo
-**Files cần sửa:**
-- `frontend/src/pages/Comparison.tsx` *(placeholder)*
-- `frontend/src/pages/Alerts.tsx` *(placeholder)*
+**Files chính:**
+- `frontend/src/components/tabs/CompareTab.jsx`
+- `frontend/src/components/tabs/AlertsTab.jsx`
 
-**Tab So sánh:**
+**Tab So sánh (`CompareTab.jsx`):**
 - [ ] Multi-select tối đa 3 tỉnh cùng lúc
 - [ ] Vẽ **Multi-line chart** so sánh AQI của các tỉnh trên cùng trục thời gian
 - [ ] Vẽ **Radar chart** so sánh trung bình 7 biến giữa các tỉnh
 - [ ] Bảng tổng hợp: min, max, trung bình, độ lệch chuẩn của từng tỉnh được chọn
 
-**Tab Cảnh báo:**
+**Tab Cảnh báo (`AlertsTab.jsx`):**
 - [ ] Gọi API: `GET /api/v1/analytics/anomalies?province_id=...&metric=pm2_5&threshold=2.5`
 - [ ] Hiển thị **Line chart** với các điểm bất thường được đánh dấu màu đỏ (`ReferenceDot` của Recharts)
 - [ ] Bảng danh sách bất thường:
   - Cột: Tỉnh | Thời điểm | Giá trị đo | Z-score | Mức độ
-  - Badge: `|z| > 2.5` = ⚠️ Cao &nbsp; | &nbsp; `|z| > 3.5` = 🚨 Rất cao
+  - Badge: `|z| > 2.5` = ⚠️ Cao  |  `|z| > 3.5` = 🚨 Rất cao
 - [ ] KPI card: Tổng số bất thường | Tỉnh có nhiều bất thường nhất
 - [ ] Click vào một dòng bất thường → xem chi tiết 3 giờ trước và sau
 
@@ -85,17 +118,17 @@
 
 ### 👤 Thành viên 4 — Backend & Global State
 **Files cần sửa/tạo:**
-- `frontend/src/store/filterStore.ts`
-- `frontend/src/store/chatStore.ts`
+- `frontend/src/store/filterStore.ts` *(đã có skeleton)*
+- `frontend/src/store/chatStore.ts` *(cần tạo mới)*
 - `backend/app/cache/redis.py` *(file rỗng)*
 - `backend/app/api/v1/dashboard.py` (thêm endpoint còn thiếu)
 
 **Global Filter Store:**
-- [ ] Tạo `frontend/src/store/filterStore.ts` (Zustand):
+- [ ] Hoàn thiện `frontend/src/store/filterStore.ts` (Zustand):
   - State: `selectedProvinces`, `dateRange`, `selectedMetric`
   - Khi thay đổi filter → tất cả chart trong app tự động refetch
 - [ ] Tạo `frontend/src/store/chatStore.ts` (Zustand cho AI Chatbox)
-- [ ] Gắn `GlobalFilterBar` vào Layout để hiển thị ở tất cả các tab
+- [ ] Gắn `GlobalFilterBar` vào `AirvizDashboard.jsx` để hiển thị ở tất cả các tab
 
 **WebSocket realtime:**
 - [ ] Implement `GET /ws/realtime` trong backend phát AQI mới nhất mỗi 60 giây
@@ -129,9 +162,10 @@
 - [ ] Implement `ai_logs` service: ghi log đầy đủ vòng đời (pending → approved → executed)
 - [ ] Wire RAG thật vào endpoint `POST /api/v1/ai/chat`
 
-**Frontend Chatbox:**
+**Frontend Chatbox:**  
+*(Button "Hỏi AI" đã có sẵn trong `AirvizDashboard.jsx` — chỉ cần replace `ChatPanel` placeholder)*
 - [ ] Tạo component `frontend/src/components/ai/ChatBox.tsx`
-  - Floating button "Hỏi AI" ở góc phải màn hình
+  - Floating button "Hỏi AI" ở góc phải màn hình (đã có placeholder)
   - Mở modal overlay khi click
 - [ ] Tạo `ChatThread.tsx`: render markdown response (`react-markdown`)
 - [ ] Tạo `ApprovalPanel.tsx`: hiển thị SQL/code được sinh ra, nút **Approve** / **Reject**
@@ -156,7 +190,7 @@
 
 ```
 🔴 Ưu tiên NGAY (ảnh hưởng trực tiếp điểm số):
-   1. Tab Bản đồ (TTV 1) — trực quan nhất, chiếm điểm cao
+   1. Tab Bản đồ (TTV 1) ✅ HOÀN THÀNH
    2. Global Filter Store (TTV 4) — cần xong trước khi test tích hợp
    3. Tab Cảnh báo - Anomaly (TTV 3) — kỹ thuật nổi bật nhất
 
@@ -178,6 +212,7 @@
 > **Chạy hệ thống:** Mỗi lần bật máy cần chạy:
 > ```bash
 > docker compose up -d
+> cd frontend && npm run dev
 > ```
 > Frontend: `http://localhost:5173` | Backend API: `http://localhost:8080/docs`
 
