@@ -8,7 +8,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(me
 log = logging.getLogger("import_csv")
 
 def main():
-    csv_path = "/data/vietnam_air_quality_dataset.csv"
+    csv_path = "/data/cleaned/vietnam_air_quality_dataset_cleaned.csv"
     if not os.path.exists(csv_path):
         log.error("Không tìm thấy file %s. Đảm bảo bạn đã map thư mục /data trong docker-compose.yml", csv_path)
         return
@@ -35,7 +35,7 @@ def main():
     
     # Insert provinces first to avoid foreign key violations
     import json
-    provinces_file = "/data/provinces.json"
+    provinces_file = "/data/meta/provinces.json"
     if os.path.exists(provinces_file):
         with open(provinces_file, "r", encoding="utf-8") as f:
             provinces_data = json.load(f)
