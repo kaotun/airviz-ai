@@ -60,5 +60,5 @@ docker-compose.override.yml
 
 # ── Data & Datasets ───────────────────────────────────────────────────────
 data/*
-!data/provinces.json
+!data/meta/
 *.csv

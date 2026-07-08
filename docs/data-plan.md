@@ -72,10 +72,10 @@ GET https://nominatim.openstreetmap.org/search
 
 ## 5. Chiến lược Thu thập
 
-- **Geocoding**: Crawl tọa độ 1 lần duy nhất → lưu vào `data/provinces.json` (dữ liệu tĩnh, không crawl lại).
+- **Geocoding**: Crawl tọa độ 1 lần duy nhất → lưu vào `data/meta/provinces.json` (dữ liệu tĩnh, không crawl lại).
 - **Dữ liệu lịch sử**: Gọi API từng tỉnh, mỗi tỉnh 1 request, sleep 0.15s giữa các request để không bị rate limit.
 - **Retry**: Tự động thử lại tối đa 3 lần với exponential backoff (2s, 4s) nếu request lỗi.
-- **Output**: Lưu toàn bộ ra file `data/vietnam_air_quality_dataset.csv` (~50MB).
+- **Output**: Lưu toàn bộ ra file `data/raw/vietnam_air_quality_dataset.csv` (~50MB).
 
 ---
 
