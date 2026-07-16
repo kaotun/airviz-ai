@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { dashboardApi, analyticsApi } from '../../api/dashboard';
 import { useFilterStore } from '../../store/filterStore';
@@ -30,9 +30,9 @@ const AlertsTab = () => {
       <section>
         <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:16}}>
           {[
-            {label:"Tá»•ng báº¥t thÆ°á»ng",value:"47",sub:"30 ngÃ y qua",color:C.violet},
-            {label:"Tá»‰nh nhiá»u nháº¥t",value:"HÃ  Ná»™i Â· 8 láº§n",sub:"Z-score TB: 3.1Ïƒ",color:C.danger},
-            {label:"Z-score cao nháº¥t",value:"3.82Ïƒ",sub:"PM2.5 Â· 27/06 08:30",color:C.warning},
+            {label:"Tổng bất thường",value:"47",sub:"30 ngày qua",color:C.violet},
+            {label:"Tỉnh nhiều nhất",value:"Hà Nội · 8 lần",sub:"Z-score TB: 3.1σ",color:C.danger},
+            {label:"Z-score cao nhất",value:"3.82σ",sub:"PM2.5 · 27/06 08:30",color:C.warning},
           ].map(({label,value,sub,color})=>(
             <div key={label} style={{...glassCard,textAlign:"center",position:"relative"}}
               onMouseEnter={e=>e.currentTarget.style.boxShadow=`0 0 30px ${color}20`}
@@ -48,7 +48,7 @@ const AlertsTab = () => {
 
       {/* Z-score timeline */}
       <section>
-        <SectionHeader title="Z-score theo thá»i gian â€” PM2.5 HÃ  Ná»™i" sub="NgÆ°á»¡ng cáº£nh bÃ¡o: 2.5Ïƒ (vÃ ng) vÃ  3.5Ïƒ (Ä‘á»)"/>
+        <SectionHeader title="Z-score theo thời gian — PM2.5 Hà Nội" sub="Ngưỡng cảnh báo: 2.5σ (vàng) và 3.5σ (đỏ)"/>
         <div style={{...glassCard}}>
           <ResponsiveContainer width="100%" height={240}>
             <ComposedChart data={zscore30} margin={{top:10,right:20,bottom:0,left:0}}>
@@ -62,8 +62,8 @@ const AlertsTab = () => {
               <XAxis dataKey="day" tick={{fill:C.muted,fontSize:11}} axisLine={false} tickLine={false}/>
               <YAxis tick={{fill:C.muted,fontSize:11}} axisLine={false} tickLine={false} domain={[0,5]}/>
               <Tooltip content={<DarkTooltip/>}/>
-              <ReferenceLine y={2.5} stroke={C.warning} strokeDasharray="5 3" strokeWidth={1.5} label={{value:"2.5Ïƒ",fill:C.warning,fontSize:10,position:"right"}}/>
-              <ReferenceLine y={3.5} stroke={C.danger} strokeDasharray="5 3" strokeWidth={1.5} label={{value:"3.5Ïƒ",fill:C.danger,fontSize:10,position:"right"}}/>
+              <ReferenceLine y={2.5} stroke={C.warning} strokeDasharray="5 3" strokeWidth={1.5} label={{value:"2.5σ",fill:C.warning,fontSize:10,position:"right"}}/>
+              <ReferenceLine y={3.5} stroke={C.danger} strokeDasharray="5 3" strokeWidth={1.5} label={{value:"3.5σ",fill:C.danger,fontSize:10,position:"right"}}/>
               <Area type="monotone" dataKey="z" stroke={C.sky} strokeWidth={2} fill="url(#zgrad)" name="Z-score"
                 dot={(props)=>{
                   const {cx,cy,value}=props;
@@ -77,7 +77,7 @@ const AlertsTab = () => {
 
       {/* Anomaly heatmap */}
       <section>
-        <SectionHeader title="Báº£n Ä‘á»“ nhiá»‡t báº¥t thÆ°á»ng â€” Tá»‰nh Ã— ThÃ¡ng"/>
+        <SectionHeader title="Bản đồ nhiệt bất thường — Tỉnh × Tháng"/>
         <div style={{...glassCard,overflowX:"auto"}}>
           <div style={{display:"grid",gridTemplateColumns:`100px repeat(12,1fr)`,gap:3,minWidth:700}}>
             <div/>
@@ -92,7 +92,7 @@ const AlertsTab = () => {
                   const cnt=entry?.count||0;
                   const opacity=cnt/6;
                   return (
-                    <div key={mi} title={`${p.name} T${mi+1}: ${cnt} báº¥t thÆ°á»ng`}
+                    <div key={mi} title={`${p.name} T${mi+1}: ${cnt} bất thường`}
                       style={{height:32,borderRadius:4,background:`rgba(248,113,113,${opacity})`,border:`1px solid rgba(248,113,113,${opacity*0.5})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:11,color:cnt>3?"#fff":C.muted,...monoFont}}>
                       {cnt||""}
                     </div>
@@ -106,7 +106,7 @@ const AlertsTab = () => {
 
       {/* Alert Timeline */}
       <section>
-        <SectionHeader title="DÃ²ng thá»i gian sá»± kiá»‡n báº¥t thÆ°á»ng"/>
+        <SectionHeader title="Dòng thời gian sự kiện bất thường"/>
         <div style={{...glassCard}}>
           {alertsData.map((a,i)=>(
             <div key={i} style={{display:"grid",gridTemplateColumns:"100px 24px 1fr",gap:12,marginBottom:i<alertsData.length-1?16:0,alignItems:"center"}}>
@@ -114,17 +114,17 @@ const AlertsTab = () => {
                 <p style={{color:C.muted,fontSize:11,margin:0,...monoFont}}>{a.time}</p>
               </div>
               <div style={{display:"flex",flexDirection:"column",alignItems:"center"}}>
-                <div style={{width:10,height:10,borderRadius:"50%",background:a.level==="Ráº¥t cao"?C.danger:C.warning,boxShadow:`0 0 8px ${a.level==="Ráº¥t cao"?C.danger:C.warning}`}}/>
+                <div style={{width:10,height:10,borderRadius:"50%",background:a.level==="Rất cao"?C.danger:C.warning,boxShadow:`0 0 8px ${a.level==="Rất cao"?C.danger:C.warning}`}}/>
                 {i<alertsData.length-1&&<div style={{width:1,height:24,background:"rgba(255,255,255,0.08)",marginTop:4}}/>}
               </div>
-              <div style={{background:a.level==="Ráº¥t cao"?"rgba(248,113,113,0.06)":"rgba(251,191,36,0.06)",border:`1px solid ${a.level==="Ráº¥t cao"?"rgba(248,113,113,0.2)":"rgba(251,191,36,0.2)"}`,borderRadius:10,padding:"10px 14px",boxShadow:a.level==="Ráº¥t cao"?`0 0 16px rgba(248,113,113,0.12)`:"none"}}>
+              <div style={{background:a.level==="Rất cao"?"rgba(248,113,113,0.06)":"rgba(251,191,36,0.06)",border:`1px solid ${a.level==="Rất cao"?"rgba(248,113,113,0.2)":"rgba(251,191,36,0.2)"}`,borderRadius:10,padding:"10px 14px",boxShadow:a.level==="Rất cao"?`0 0 16px rgba(248,113,113,0.12)`:"none"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
-                  <span style={{color:C.text,fontWeight:700,fontSize:13,...headFont}}>{a.province} Â· {a.metric}</span>
-                  <span style={{background:a.level==="Ráº¥t cao"?"rgba(248,113,113,0.2)":"rgba(251,191,36,0.2)",border:`1px solid ${a.level==="Ráº¥t cao"?C.danger:C.warning}`,borderRadius:12,padding:"2px 10px",fontSize:11,color:a.level==="Ráº¥t cao"?C.danger:C.warning}}>{a.level}</span>
+                  <span style={{color:C.text,fontWeight:700,fontSize:13,...headFont}}>{a.province} · {a.metric}</span>
+                  <span style={{background:a.level==="Rất cao"?"rgba(248,113,113,0.2)":"rgba(251,191,36,0.2)",border:`1px solid ${a.level==="Rất cao"?C.danger:C.warning}`,borderRadius:12,padding:"2px 10px",fontSize:11,color:a.level==="Rất cao"?C.danger:C.warning}}>{a.level}</span>
                 </div>
                 <div style={{display:"flex",alignItems:"center",gap:12}}>
-                  <span style={{color:C.muted,fontSize:12,...monoFont}}>GiÃ¡ trá»‹: <span style={{color:a.level==="Ráº¥t cao"?C.danger:C.warning,fontWeight:700}}>{a.value}</span></span>
-                  <span style={{color:C.muted,fontSize:12,...monoFont}}>Z-score: <span style={{color:C.warning,fontWeight:700}}>{a.zscore}Ïƒ</span></span>
+                  <span style={{color:C.muted,fontSize:12,...monoFont}}>Giá trị: <span style={{color:a.level==="Rất cao"?C.danger:C.warning,fontWeight:700}}>{a.value}</span></span>
+                  <span style={{color:C.muted,fontSize:12,...monoFont}}>Z-score: <span style={{color:C.warning,fontWeight:700}}>{a.zscore}σ</span></span>
                   <div style={{flex:1,height:4,background:"rgba(255,255,255,0.05)",borderRadius:2,overflow:"hidden"}}>
                     <div style={{height:"100%",width:`${(a.zscore/5)*100}%`,background:`linear-gradient(90deg,${C.warning},${C.danger})`,borderRadius:2}}/>
                   </div>
@@ -137,12 +137,12 @@ const AlertsTab = () => {
 
       {/* Alert Details Table */}
       <section>
-        <SectionHeader title="Chi tiáº¿t táº¥t cáº£ báº¥t thÆ°á»ng â€” 30 ngÃ y"/>
+        <SectionHeader title="Chi tiết tất cả bất thường — 30 ngày"/>
         <div style={{...glassCard,padding:0,overflow:"hidden"}}>
           <table style={{width:"100%",borderCollapse:"collapse"}}>
             <thead>
               <tr style={{background:"rgba(248,113,113,0.06)",borderBottom:`1px solid rgba(248,113,113,0.15)`}}>
-                {["Thá»i gian","Tá»‰nh","Chá»‰ sá»‘","GiÃ¡ trá»‹","Z-score","Má»©c Ä‘á»™"].map(h=>(
+                {["Thời gian","Tỉnh","Chỉ số","Giá trị","Z-score","Mức độ"].map(h=>(
                   <th key={h} style={{padding:"12px 16px",textAlign:"left",color:C.muted,fontSize:11,...headFont}}>{h}</th>
                 ))}
               </tr>
@@ -157,10 +157,10 @@ const AlertsTab = () => {
                   <td style={{padding:"10px 16px",color:C.sky,fontSize:12,...monoFont}}>{a.metric}</td>
                   <td style={{padding:"10px 16px",color:C.text,fontSize:12,fontWeight:700,...monoFont}}>{a.value}</td>
                   <td style={{padding:"10px 16px"}}>
-                    <span style={{color:a.zscore>3?C.danger:C.warning,fontWeight:700,...monoFont}}>{a.zscore}Ïƒ</span>
+                    <span style={{color:a.zscore>3?C.danger:C.warning,fontWeight:700,...monoFont}}>{a.zscore}σ</span>
                   </td>
                   <td style={{padding:"10px 16px"}}>
-                    <span style={{background:a.level==="Ráº¥t cao"?"rgba(248,113,113,0.15)":"rgba(251,191,36,0.15)",border:`1px solid ${a.level==="Ráº¥t cao"?"rgba(248,113,113,0.3)":"rgba(251,191,36,0.3)"}`,borderRadius:12,padding:"3px 10px",fontSize:11,color:a.level==="Ráº¥t cao"?C.danger:C.warning,...headFont}}>
+                    <span style={{background:a.level==="Rất cao"?"rgba(248,113,113,0.15)":"rgba(251,191,36,0.15)",border:`1px solid ${a.level==="Rất cao"?"rgba(248,113,113,0.3)":"rgba(251,191,36,0.3)"}`,borderRadius:12,padding:"3px 10px",fontSize:11,color:a.level==="Rất cao"?C.danger:C.warning,...headFont}}>
                       {a.level}
                     </span>
                   </td>
@@ -173,7 +173,7 @@ const AlertsTab = () => {
 
       {/* Top anomalous provinces */}
       <section>
-        <SectionHeader title="Sá»‘ láº§n báº¥t thÆ°á»ng theo tá»‰nh â€” Top 10"/>
+        <SectionHeader title="Số lần bất thường theo tỉnh — Top 10"/>
         <div style={{...glassCard}}>
           <div style={{display:"flex",flexDirection:"column",gap:10}}>
             {topAnomProv.slice(0,10).map((p,i)=>(

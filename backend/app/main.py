@@ -42,9 +42,9 @@ async def lifespan(app: FastAPI):
     pool = await db_conn.create_pool()
     db_conn.set_pool(pool)
 
-    # TODO Phase 2: khởi tạo Redis pool
-    # from app.cache import redis as cache
-    # await cache.init()
+    # Khởi tạo Redis pool
+    from app.cache import redis as cache
+    await cache.init()
 
     log.info("═" * 50)
     yield  # ← app chạy ở đây
@@ -52,6 +52,10 @@ async def lifespan(app: FastAPI):
     # Shutdown
     log.info("Đang tắt backend...")
     await db_conn.close_pool(pool)
+    
+    from app.cache import redis as cache
+    await cache.close()
+    
     log.info("Bye!")
 
 

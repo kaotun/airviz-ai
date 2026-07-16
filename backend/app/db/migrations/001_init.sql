@@ -97,7 +97,7 @@ FROM env_readings
 GROUP BY day, province_id
 WITH NO DATA;
 
-COMMENT ON MATERIALIZED VIEW daily_aqi IS
+COMMENT ON VIEW daily_aqi IS
     'Aggregate trung bình ngày — dùng cho query 30 ngày, tháng, quý. Cập nhật tự động.';
 
 -- Refresh policy: tự động cập nhật daily_aqi mỗi 1 giờ

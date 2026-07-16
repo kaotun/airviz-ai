@@ -10,6 +10,7 @@ import MapTab from './components/tabs/MapTab';
 import AnalysisTab from './components/tabs/AnalysisTab';
 import CompareTab from './components/tabs/CompareTab';
 import AlertsTab from './components/tabs/AlertsTab';
+import GlobalFilterBar from './components/GlobalFilterBar';
 
 export default function AirVizDashboard() {
   const [tab,setTab] = useState(0);
@@ -56,22 +57,7 @@ export default function AirVizDashboard() {
         </div>
       </nav>
 
-      {/* Filter strip */}
-      <div style={{position:"sticky",top:56,zIndex:40,background:"rgba(5,10,20,0.85)",backdropFilter:"blur(12px)",borderBottom:`1px solid ${C.border}`,padding:"10px 32px",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
-        {["Hôm nay","7 ngày","30 ngày","YTD"].map(d=>(
-          <button key={d} style={{background:"rgba(56,189,248,0.08)",border:`1px solid rgba(56,189,248,0.15)`,borderRadius:16,padding:"4px 12px",color:C.sky,fontSize:11,cursor:"pointer",...monoFont}}>{d}</button>
-        ))}
-        <select style={{background:"rgba(255,255,255,0.04)",border:`1px solid ${C.border}`,borderRadius:16,padding:"4px 12px",color:C.text,fontSize:11,outline:"none",...monoFont}}>
-          <option>Tất cả tỉnh</option>
-          {provinces.map(p=><option key={p.name}>{p.name}</option>)}
-        </select>
-        <div style={{display:"flex",gap:6,flexWrap:"wrap"}}>
-          {["PM2.5","PM10","CO","NO₂","SO₂","O₃","Dust"].map(m=>(
-            <span key={m} style={{background:"rgba(167,139,250,0.1)",border:"1px solid rgba(167,139,250,0.2)",borderRadius:12,padding:"3px 10px",fontSize:11,color:C.violet,cursor:"pointer",...monoFont}}>{m}</span>
-          ))}
-        </div>
-        <span style={{marginLeft:"auto",color:C.muted,fontSize:11,...monoFont}}>63 tỉnh · 1,372,000 bản ghi</span>
-      </div>
+      <GlobalFilterBar />
 
       {/* Content */}
       <main style={{padding:"32px",maxWidth:1400,margin:"0 auto",position:"relative",zIndex:1}}>

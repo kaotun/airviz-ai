@@ -12,11 +12,11 @@ export default defineConfig({
     proxy: {
       // Proxy API calls đến backend — không bị CORS khi dev
       '/api': {
-        target: 'http://127.0.0.1:8080',
+        target: 'http://127.0.0.1:8000',
         changeOrigin: true,
       },
       '/ws': {
-        target: 'ws://127.0.0.1:8080',
+        target: 'ws://127.0.0.1:8000',
         ws: true,
       },
     },

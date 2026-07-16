@@ -1,4 +1,4 @@
-﻿# 📋 AirViz.AI — Phân Công Nhiệm Vụ
+# 📋 AirViz.AI — Phân Công Nhiệm Vụ
 
 > **Cập nhật lần cuối:** 08/07/2026  
 > **Trạng thái dự án:** Hạ tầng ✅ | Dữ liệu ✅ | Backend API 🟡 | Frontend 🟡 | AI Chatbox 🔴
@@ -124,21 +124,21 @@ frontend/src/
 - `backend/app/api/v1/dashboard.py` (thêm endpoint còn thiếu)
 
 **Global Filter Store:**
-- [ ] Hoàn thiện `frontend/src/store/filterStore.ts` (Zustand):
+- [x] Hoàn thiện `frontend/src/store/filterStore.ts` (Zustand):
   - State: `selectedProvinces`, `dateRange`, `selectedMetric`
   - Khi thay đổi filter → tất cả chart trong app tự động refetch
-- [ ] Tạo `frontend/src/store/chatStore.ts` (Zustand cho AI Chatbox)
-- [ ] Gắn `GlobalFilterBar` vào `AirvizDashboard.jsx` để hiển thị ở tất cả các tab
+- [x] Tạo `frontend/src/store/chatStore.ts` (Zustand cho AI Chatbox)
+- [x] Gắn `GlobalFilterBar` vào `AirvizDashboard.jsx` để hiển thị ở tất cả các tab
 
 **WebSocket realtime:**
-- [ ] Implement `GET /ws/realtime` trong backend phát AQI mới nhất mỗi 60 giây
-- [ ] Tạo hook `frontend/src/hooks/useWebSocket.ts` để consume WebSocket
-- [ ] Kết nối WebSocket vào bản đồ: màu tỉnh tự cập nhật không cần reload
+- [x] Implement `GET /ws/realtime` trong backend phát AQI mới nhất mỗi 60 giây
+- [x] Tạo hook `frontend/src/hooks/useWebSocket.ts` để consume WebSocket
+- [x] Kết nối WebSocket vào bản đồ: màu tỉnh tự cập nhật không cần reload
 
 **API còn thiếu:**
-- [ ] `GET /dashboard/comparison` — So sánh nhiều tỉnh
+- [x] `GET /dashboard/comparison` — So sánh nhiều tỉnh
   - Params: `province_ids` (list), `metric`, `start_date`, `end_date`
-- [ ] Implement Redis cache trong `cache/redis.py` (hiện file rỗng)
+- [x] Implement Redis cache trong `cache/redis.py` (hiện file rỗng)
   - Pattern: check cache → nếu miss → query DB → lưu cache → trả kết quả
 
 ---

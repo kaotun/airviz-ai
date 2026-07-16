@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { MapContainer, GeoJSON, CircleMarker, Marker } from 'react-leaflet';
 import { dashboardApi } from '../../api/dashboard';
 import { useQuery } from '@tanstack/react-query';
+import { useWebSocket } from '../../hooks/useWebSocket';
 import L from 'leaflet';
 
 // Hàm màu AQI (đã điều chỉnh cho chế độ nền tối)
@@ -46,6 +47,8 @@ export default function VietnamMap({ onProvinceClick }: { onProvinceClick: (name
         queryKey: ['mapData'],
         queryFn: () => dashboardApi.getMapData()
     });
+
+    useWebSocket();
 
     if (!geoData) return <div style={{color:'white', padding: 20}}>Đang tải bản đồ...</div>;
 

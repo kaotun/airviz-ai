@@ -24,10 +24,11 @@ export const dashboardApi = {
       params: { start_date: startDate, end_date: endDate, limit }
     }).then(r => r.data),
 
-  getComparison: (provinceIds: number[], startDate: string, endDate: string) =>
+  getComparison: (provinceIds: number[], metric: string, startDate: string, endDate: string) =>
     api.get('/dashboard/comparison', {
       params: {
         province_ids: provinceIds.join(','),
+        metric: metric,
         start_date: startDate,
         end_date: endDate,
       }

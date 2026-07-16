@@ -1,4 +1,4 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { dashboardApi, analyticsApi } from '../../api/dashboard';
 import { useFilterStore } from '../../store/filterStore';
@@ -19,7 +19,7 @@ import {
 
 const AnalysisTab = () => {
   const [selMetric,setSelMetric] = useState("PM2.5");
-  const metrics = ["PM2.5","PM10","CO","NOâ‚‚","SOâ‚‚","Oâ‚ƒ"];
+  const metrics = ["PM2.5","PM10","CO","NO₂","SO₂","O₃"];
 
   const multiLine = Array.from({length:30},(_,i)=>({
     day:`T${i+1}`,
@@ -53,7 +53,7 @@ const AnalysisTab = () => {
     <div style={{display:"flex",flexDirection:"column",gap:32}}>
       {/* Multi-line time series */}
       <section>
-        <SectionHeader title="Chuá»—i thá»i gian Ä‘a tá»‰nh"/>
+        <SectionHeader title="Chuỗi thời gian đa tỉnh"/>
         <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}>
           {metrics.map(m=>(
             <button key={m} onClick={()=>setSelMetric(m)}
@@ -64,7 +64,7 @@ const AnalysisTab = () => {
         </div>
         <div style={{...glassCard}}>
           <div style={{display:"flex",gap:16,marginBottom:12}}>
-            {[{c:C.sky,l:"HÃ  Ná»™i"},{c:C.violet,l:"TP.HCM"},{c:C.emerald,l:"ÄÃ  Náºµng"}].map(({c,l})=>(
+            {[{c:C.sky,l:"Hà Nội"},{c:C.violet,l:"TP.HCM"},{c:C.emerald,l:"Đà Nẵng"}].map(({c,l})=>(
               <span key={l} style={{display:"flex",alignItems:"center",gap:6,fontSize:12,color:C.muted}}>
                 <span style={{width:20,height:2,background:c,display:"inline-block"}}/>
                 {l}
@@ -85,9 +85,9 @@ const AnalysisTab = () => {
               <XAxis dataKey="day" tick={{fill:C.muted,fontSize:11}} axisLine={false} tickLine={false}/>
               <YAxis tick={{fill:C.muted,fontSize:11}} axisLine={false} tickLine={false}/>
               <Tooltip content={<DarkTooltip/>}/>
-              <Area type="monotone" dataKey="hanoi" stroke={C.sky} strokeWidth={2} fill="url(#mhn)" dot={false} name="HÃ  Ná»™i"/>
+              <Area type="monotone" dataKey="hanoi" stroke={C.sky} strokeWidth={2} fill="url(#mhn)" dot={false} name="Hà Nội"/>
               <Area type="monotone" dataKey="hcm" stroke={C.violet} strokeWidth={2} fill="url(#mhcm)" dot={false} name="TP.HCM"/>
-              <Area type="monotone" dataKey="danang" stroke={C.emerald} strokeWidth={2} fill="url(#mdn)" dot={false} name="ÄÃ  Náºµng"/>
+              <Area type="monotone" dataKey="danang" stroke={C.emerald} strokeWidth={2} fill="url(#mdn)" dot={false} name="Đà Nẵng"/>
             </ComposedChart>
           </ResponsiveContainer>
         </div>
@@ -95,7 +95,7 @@ const AnalysisTab = () => {
 
       {/* Correlation Heatmap */}
       <section>
-        <SectionHeader title="Ma tráº­n tÆ°Æ¡ng quan Pearson â€” 7 biáº¿n mÃ´i trÆ°á»ng"/>
+        <SectionHeader title="Ma trận tương quan Pearson — 7 biến môi trường"/>
         <div style={{...glassCard}}>
           <div style={{display:"grid",gridTemplateColumns:`80px repeat(7,1fr)`,gap:3}}>
             <div/>
@@ -122,21 +122,21 @@ const AnalysisTab = () => {
       <section>
         <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
           <div style={{...glassCard}}>
-            <SectionHeader title="PhÃ¢n phá»‘i PM2.5"/>
+            <SectionHeader title="Phân phối PM2.5"/>
             <ResponsiveContainer width="100%" height={220}>
               <ComposedChart data={histData} margin={{top:10,right:20,bottom:0,left:0}}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false}/>
                 <XAxis dataKey="range" tick={{fill:C.muted,fontSize:9}} axisLine={false} tickLine={false} interval={3}/>
                 <YAxis tick={{fill:C.muted,fontSize:11}} axisLine={false} tickLine={false}/>
                 <Tooltip content={<DarkTooltip/>}/>
-                <Bar dataKey="freq" name="Táº§n suáº¥t" fill={C.sky} radius={[3,3,0,0]} fillOpacity={0.8}/>
+                <Bar dataKey="freq" name="Tần suất" fill={C.sky} radius={[3,3,0,0]} fillOpacity={0.8}/>
                 <ReferenceLine x="35-40" stroke={C.warning} strokeDasharray="4 2" label={{value:"Mean",fill:C.warning,fontSize:10}}/>
               </ComposedChart>
             </ResponsiveContainer>
           </div>
 
           <div style={{...glassCard}}>
-            <SectionHeader title="PhÃ¢n vá»‹ AQI â€” Top 10 tá»‰nh"/>
+            <SectionHeader title="Phân vị AQI — Top 10 tỉnh"/>
             <div style={{display:"flex",flexDirection:"column",gap:10,marginTop:8}}>
               {provinces.sort((a,b)=>b.aqi-a.aqi).slice(0,8).map((p,i)=>{
                 const q1=p.aqi*0.75,med=p.aqi,q3=p.aqi*1.18,w=p.aqi*1.35;
@@ -157,9 +157,9 @@ const AnalysisTab = () => {
         </div>
       </section>
 
-      {/* WeekÃ—Hour heatmap */}
+      {/* Week×Hour heatmap */}
       <section>
-        <SectionHeader title="AQI theo ngÃ y Ã— giá» trong tuáº§n" sub="PhÃ¡t hiá»‡n mÃ´ hÃ¬nh Ã´ nhiá»…m giá» cao Ä‘iá»ƒm"/>
+        <SectionHeader title="AQI theo ngày × giờ trong tuần" sub="Phát hiện mô hình ô nhiễm giờ cao điểm"/>
         <div style={{...glassCard}}>
           <div style={{display:"grid",gridTemplateColumns:"40px repeat(24,1fr)",gap:2}}>
             <div/>
@@ -185,7 +185,7 @@ const AnalysisTab = () => {
 
       {/* Trend decomposition */}
       <section>
-        <SectionHeader title="PhÃ¢n rÃ£ xu hÆ°á»›ng AQI â€” dá»¯ liá»‡u thÃ´ vs lÃ m mÆ°á»£t"/>
+        <SectionHeader title="Phân rã xu hướng AQI — dữ liệu thô vs làm mượt"/>
         <div style={{...glassCard}}>
           <ResponsiveContainer width="100%" height={220}>
             <ComposedChart data={raw30} margin={{top:10,right:20,bottom:0,left:0}}>
@@ -199,9 +199,9 @@ const AnalysisTab = () => {
               <XAxis dataKey="day" tick={{fill:C.muted,fontSize:11}} axisLine={false} tickLine={false}/>
               <YAxis tick={{fill:C.muted,fontSize:11}} axisLine={false} tickLine={false}/>
               <Tooltip content={<DarkTooltip/>}/>
-              <Area type="monotone" dataKey="raw" stroke="rgba(56,189,248,0.4)" strokeWidth={1} fill="url(#rawGrad)" dot={false} name="AQI thÃ´"/>
-              <Line type="monotone" dataKey="smooth" stroke={C.sky} strokeWidth={2.5} dot={false} name="Trung bÃ¬nh 7 ngÃ y"/>
-              <Line dataKey="anomaly" stroke={C.danger} strokeWidth={0} dot={{fill:C.danger,r:5,stroke:C.danger}} name="Báº¥t thÆ°á»ng"/>
+              <Area type="monotone" dataKey="raw" stroke="rgba(56,189,248,0.4)" strokeWidth={1} fill="url(#rawGrad)" dot={false} name="AQI thô"/>
+              <Line type="monotone" dataKey="smooth" stroke={C.sky} strokeWidth={2.5} dot={false} name="Trung bình 7 ngày"/>
+              <Line dataKey="anomaly" stroke={C.danger} strokeWidth={0} dot={{fill:C.danger,r:5,stroke:C.danger}} name="Bất thường"/>
             </ComposedChart>
           </ResponsiveContainer>
         </div>

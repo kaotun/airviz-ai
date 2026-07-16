@@ -135,6 +135,7 @@ async def get_top_polluted(
 async def get_comparison_data(
     pool: asyncpg.Pool,
     province_ids: list[int],
+    metric: str,
     start_date: date,
     end_date: date,
 ) -> dict:
@@ -144,11 +145,11 @@ async def get_comparison_data(
 
     stats = await queries.get_daily_stats_for_provinces(pool, province_ids, start_date, end_date)
 
-    # Lấy time-series cho từng tỉnh (AQI)
+    # Lấy time-series cho từng tỉnh theo metric
     timeseries = {}
     for pid in province_ids:
-        ts = await queries.get_aqi_trend(pool, start_date, end_date, province_id=pid)
-        timeseries[pid] = [{"date": str(r["day"]), "aqi": r["aqi"]} for r in ts]
+        ts = await queries.get_timeseries(pool, pid, metric, start_date, end_date)
+        timeseries[pid] = [{"date": r["time"], "value": r["value"]} for r in ts]
 
     return {
         "province_ids": province_ids,

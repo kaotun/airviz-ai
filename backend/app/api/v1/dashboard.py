@@ -5,10 +5,12 @@ Không có business logic ở đây.
 """
 
 from datetime import date, timedelta
-from fastapi import APIRouter, Depends, Query, HTTPException
+import asyncio
+from fastapi import APIRouter, Depends, Query, HTTPException, WebSocket, WebSocketDisconnect
 
 from app.db.connection import get_pool
 from app.services import data_service
+from app.cache.redis import cached
 
 router = APIRouter(prefix="/dashboard", tags=["dashboard"])
 
@@ -24,6 +26,7 @@ def _default_end() -> date:
 # ── Overview ──────────────────────────────────────────────────────────────────
 
 @router.get("/overview")
+@cached(ttl_seconds=900)
 async def get_overview(
     start_date: date = Query(default_factory=_default_start),
     end_date:   date = Query(default_factory=_default_end),
@@ -39,6 +42,7 @@ async def get_overview(
 # ── Map ───────────────────────────────────────────────────────────────────────
 
 @router.get("/map")
+@cached(ttl_seconds=300)
 async def get_map_data(pool=Depends(get_pool)):
     """
     AQI mới nhất của tất cả 63 tỉnh — dùng cho choropleth map.
@@ -46,6 +50,22 @@ async def get_map_data(pool=Depends(get_pool)):
     Cache TTL: 5 phút.
     """
     return await data_service.get_map_data(pool)
+
+
+@router.websocket("/ws/realtime")
+async def websocket_realtime(websocket: WebSocket, pool=Depends(get_pool)):
+    """
+    Phát dữ liệu AQI map mới nhất mỗi 60 giây.
+    """
+    await websocket.accept()
+    try:
+        while True:
+            data = await data_service.get_map_data(pool)
+            await websocket.send_json(data)
+            await asyncio.sleep(60)
+    except WebSocketDisconnect:
+        pass
+
 
 
 @router.get("/province/{province_id}")
@@ -65,6 +85,7 @@ async def get_province_detail(
 # ── Trend ─────────────────────────────────────────────────────────────────────
 
 @router.get("/trend")
+@cached(ttl_seconds=1800)
 async def get_trend(
     start_date:  date     = Query(default_factory=_default_start),
     end_date:    date     = Query(default_factory=_default_end),
@@ -82,6 +103,7 @@ async def get_trend(
 # ── Top polluted ──────────────────────────────────────────────────────────────
 
 @router.get("/top-polluted")
+@cached(ttl_seconds=1800)
 async def get_top_polluted(
     start_date: date = Query(default_factory=_default_start),
     end_date:   date = Query(default_factory=_default_end),
@@ -98,8 +120,10 @@ async def get_top_polluted(
 # ── Comparison ────────────────────────────────────────────────────────────────
 
 @router.get("/comparison")
+@cached(ttl_seconds=1800)
 async def get_comparison(
     province_ids: str  = Query(..., description="ID tỉnh phân cách bằng dấu phẩy. VD: 1,2,3"),
+    metric:       str  = Query("european_aqi", description="Metric để so sánh time-series"),
     start_date:   date = Query(default_factory=_default_start),
     end_date:     date = Query(default_factory=_default_end),
     pool=Depends(get_pool),
@@ -118,4 +142,4 @@ async def get_comparison(
     if len(ids) > 3:
         raise HTTPException(status_code=400, detail="Tối đa 3 tỉnh để so sánh.")
 
-    return await data_service.get_comparison_data(pool, ids, start_date, end_date)
+    return await data_service.get_comparison_data(pool, ids, metric, start_date, end_date)

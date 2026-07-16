@@ -118,7 +118,7 @@ async def get_latest_aqi_all_provinces(pool: asyncpg.Pool) -> list[dict]:
             pm2_5,
             time
         FROM env_readings
-        WHERE time >= NOW() - INTERVAL '6 hours'
+        WHERE time >= (SELECT MAX(time) FROM env_readings) - INTERVAL '6 hours'
         ORDER BY province_id, time DESC
         """
     )
