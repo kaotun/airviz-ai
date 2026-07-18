@@ -7,14 +7,14 @@ GET /api/v1/analytics/correlation — Pearson correlation matrix
 from datetime import date
 from typing import Literal
 
+import pandas as pd
 from fastapi import APIRouter, Depends, HTTPException, Query
 
+from app.db.connection import get_pool
+from app.db import queries
+from app.services import analytics_service
+
 router = APIRouter(prefix="/analytics", tags=["analytics"])
-
-
-# Stub — sẽ inject DB pool và cache thật ở Phase 2
-# from app.db.connection import get_pool
-# from app.cache.redis import get_cache
 
 
 @router.get("/anomalies")
@@ -53,6 +53,7 @@ async def get_correlation(
     province_id: int | None = Query(None, description="ID tỉnh (bỏ trống = toàn quốc)"),
     start_date: date = Query(..., description="Ngày bắt đầu (YYYY-MM-DD)"),
     end_date: date   = Query(..., description="Ngày kết thúc (YYYY-MM-DD)"),
+    pool=Depends(get_pool),
 ):
     """
     Tính ma trận tương quan Pearson cho 7 biến môi trường.
@@ -62,15 +63,21 @@ async def get_correlation(
     - Giá trị 1.0 trên đường chéo chính (tự tương quan).
     - Cache TTL: 6 giờ (dữ liệu lịch sử ít thay đổi).
     """
-    # TODO Phase 2: query DB → pandas → analytics_service.compute_correlation()
+    if (end_date - start_date).days > 366:
+        raise HTTPException(status_code=400, detail="Khoảng ngày tối đa cho phép: 366.")
+
+    rows = await queries.get_raw_readings_for_analytics(pool, start_date, end_date, province_id)
+    if not rows:
+        raise HTTPException(status_code=404, detail="Không có dữ liệu trong khoảng ngày đã chọn.")
+
+    df = pd.DataFrame(rows)
+    try:
+        result = analytics_service.compute_correlation(df)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     return {
         "province_id": province_id,
         "period": {"start": str(start_date), "end": str(end_date)},
-        "labels":  ["pm2_5", "pm10", "carbon_monoxide", "nitrogen_dioxide",
-                    "sulphur_dioxide", "ozone", "dust"],
-        "display": ["Bụi mịn PM2.5", "Bụi mịn PM10", "Carbon Monoxide (CO)",
-                    "Nitrogen Dioxide (NO₂)", "Sulphur Dioxide (SO₂)",
-                    "Ozone (O₃)", "Bụi thô"],
-        "matrix":  [],   # sẽ có data thật sau Phase 2
-        "sample_size": 0,
+        **result,
     }
