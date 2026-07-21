@@ -1,4 +1,4 @@
-# 📋 AirViz.AI — Phân Công Nhiệm Vụ
+﻿# 📋 AirViz.AI — Phân Công Nhiệm Vụ
 
 > **Cập nhật lần cuối:** 08/07/2026  
 > **Trạng thái dự án:** Hạ tầng ✅ | Dữ liệu ✅ | Backend API 🟡 | Frontend 🟡 | AI Chatbox 🔴
