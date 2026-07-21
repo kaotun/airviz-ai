@@ -1,255 +1,374 @@
-import React, { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import { dashboardApi, analyticsApi } from '../../api/dashboard';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useQuery, useQueries } from '@tanstack/react-query';
+import { dashboardApi } from '../../api/dashboard';
 import { useFilterStore } from '../../store/filterStore';
 
 import {
-  AreaChart, Area, LineChart, Line, BarChart, Bar, XAxis, YAxis,
-  CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell,
-  RadarChart, Radar, PolarGrid, PolarAngleAxis, ScatterChart, Scatter,
-  ReferenceLine, Legend, ComposedChart
-} from "recharts";
+  LineChart, Line, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
+} from 'recharts';
 
 import {
-  C, AQI_COLORS, AQI_LABELS, generate30Days, hourlyData, provinces,
-  compareData, heatmapData, alertsData, correlationData, radarData,
-  weekHeatmap, zscore30, aqiColor, glassCard, monoFont, headFont,
-  chartDefaults, DarkTooltip, Sparkline, KPICard, SectionHeader
+  C, glassCard, monoFont, headFont, DarkTooltip, SectionHeader,
 } from '../../utils/dashboardConstants';
 
-const CompareTab = () => {
-  const { startDate, endDate } = useFilterStore();
-  
-  const { data: mapData } = useQuery({
-    queryKey: ['mapData'],
-    queryFn: () => dashboardApi.getMapData()
-  });
+const COLOR_PALETTE = [C.sky, C.violet, C.emerald];
 
-  const hanoiId = mapData?.find(p => p.province_name === "Hà Nội")?.province_id;
-  const hcmId = mapData?.find(p => p.province_name === "Hồ Chí Minh" || p.province_name === "TP.HCM")?.province_id;
-  const danangId = mapData?.find(p => p.province_name === "Đà Nẵng")?.province_id;
+const RADAR_METRICS = [
+  { key: 'pm2_5', label: 'PM2.5' },
+  { key: 'pm10', label: 'PM10' },
+  { key: 'carbon_monoxide', label: 'CO' },
+  { key: 'nitrogen_dioxide', label: 'NO₂' },
+  { key: 'sulphur_dioxide', label: 'SO₂' },
+  { key: 'ozone', label: 'O₃' },
+  { key: 'dust', label: 'Dust' },
+];
 
-  const compareIds = [hanoiId, hcmId, danangId].filter(Boolean).join(',');
+function formatDateLabel(dateStr) {
+  const d = new Date(dateStr);
+  return !isNaN(d.getTime()) ? `${d.getDate()}/${d.getMonth() + 1}` : dateStr;
+}
 
-  const { data: compData, isLoading } = useQuery({
-    queryKey: ['comparison', startDate, endDate, compareIds],
-    queryFn: () => dashboardApi.getComparison(compareIds, startDate, endDate),
-    enabled: !!compareIds
-  });
+function computeStd(values) {
+  const nums = values.filter(v => typeof v === 'number' && !isNaN(v));
+  if (nums.length < 2) return null;
+  const mean = nums.reduce((a, b) => a + b, 0) / nums.length;
+  const variance = nums.reduce((sum, v) => sum + (v - mean) ** 2, 0) / nums.length;
+  return Math.sqrt(variance);
+}
 
-  const [visible,setVisible] = useState({hanoi:true,hcm:true,danang:true});
-  const provs = [{key:"hanoi",label:"Hà Nội",color:C.sky},{key:"hcm",label:"TP.HCM",color:C.violet},{key:"danang",label:"Đà Nẵng",color:C.emerald}];
+function mergeTimeseries(timeseries, provinceIds) {
+  if (!timeseries || provinceIds.length === 0) return [];
 
-  const compareDataRaw = [];
-  if (compData?.timeseries) {
-    const hnTs = compData.timeseries[hanoiId] || [];
-    const hcmTs = compData.timeseries[hcmId] || [];
-    const dnTs = compData.timeseries[danangId] || [];
-    
-    // Merge by date
-    const dateSet = new Set([...hnTs, ...hcmTs, ...dnTs].map(d => d.date));
-    Array.from(dateSet).sort().forEach(date => {
-      const d = new Date(date);
-      compareDataRaw.push({
-        day: `${d.getDate()}/${d.getMonth()+1}`,
-        hanoi: hnTs.find(t => t.date === date)?.aqi || null,
-        hcm: hcmTs.find(t => t.date === date)?.aqi || null,
-        danang: dnTs.find(t => t.date === date)?.aqi || null,
-      });
-    });
+  const dateMap = {};
+  for (const pid of provinceIds) {
+    const series = timeseries[pid] ?? timeseries[String(pid)] ?? [];
+    for (const point of series) {
+      if (!dateMap[point.date]) {
+        dateMap[point.date] = { date: point.date, displayTime: formatDateLabel(point.date) };
+      }
+      dateMap[point.date][`province_${pid}`] = point.value;
+    }
   }
 
-  const monthlyComp = Array.from({length:12},(_,i)=>({
-    month:`T${i+1}`,
-    hanoi:Math.round(70+Math.sin(i*0.5)*20+Math.random()*10),
-    hcm:Math.round(60+Math.sin(i*0.4)*15+Math.random()*8),
-    danang:Math.round(30+Math.sin(i*0.6)*10+Math.random()*6),
+  return Object.values(dateMap).sort((a, b) => new Date(a.date) - new Date(b.date));
+}
+
+function unwrapProvinces(mapData) {
+  if (Array.isArray(mapData)) return mapData;
+  return mapData?.provinces ?? [];
+}
+
+const CompareTab = () => {
+  const { selectedProvinceId, startDate, endDate } = useFilterStore();
+  const [compareProvinces, setCompareProvinces] = useState([]);
+  const [visibleState, setVisibleState] = useState({});
+
+  const { data: mapData } = useQuery({
+    queryKey: ['mapData'],
+    queryFn: () => dashboardApi.getMapData(),
+  });
+
+  const provinceList = useMemo(() => unwrapProvinces(mapData), [mapData]);
+
+  // Đồng bộ tỉnh từ global filter nếu user đã chọn
+  useEffect(() => {
+    if (selectedProvinceId && !compareProvinces.includes(selectedProvinceId)) {
+      setCompareProvinces(prev => [selectedProvinceId, ...prev].slice(0, 3));
+    }
+  }, [selectedProvinceId]);
+
+  const activeProvinces = compareProvinces.slice(0, 3);
+  const compareIdsStr = activeProvinces.join(',');
+
+  const { data: compData, isLoading, isError } = useQuery({
+    queryKey: ['comparison', startDate, endDate, compareIdsStr],
+    queryFn: () => dashboardApi.getComparison(activeProvinces, startDate, endDate),
+    enabled: activeProvinces.length > 0,
+  });
+
+  const detailQueries = useQueries({
+    queries: activeProvinces.map(id => ({
+      queryKey: ['provinceDetail', id],
+      queryFn: () => dashboardApi.getProvinceDetail(id),
+      enabled: activeProvinces.length > 0,
+    })),
+  });
+
+  const provinceNameMap = useMemo(() => {
+    const map = {};
+    provinceList.forEach(p => { map[p.province_id] = p.province_name; });
+    detailQueries.forEach((q, i) => {
+      if (q.data?.province_name) map[activeProvinces[i]] = q.data.province_name;
+    });
+    return map;
+  }, [provinceList, detailQueries, activeProvinces]);
+
+  const renderingProvinces = activeProvinces.map((id, index) => ({
+    id: String(id),
+    label: provinceNameMap[id] || `Tỉnh ${id}`,
+    color: COLOR_PALETTE[index] || C.muted,
   }));
 
-  const scatterD = Array.from({length:30},()=>[
-    {t:Math.round(20+Math.random()*15),pm:Math.round(28+Math.random()*20),p:"hanoi"},
-    {t:Math.round(24+Math.random()*10),pm:Math.round(20+Math.random()*15),p:"hcm"},
-    {t:Math.round(22+Math.random()*12),pm:Math.round(10+Math.random()*8),p:"danang"},
-  ]).flat();
+  const timeSeriesData = useMemo(
+    () => mergeTimeseries(compData?.timeseries, activeProvinces),
+    [compData?.timeseries, activeProvinces],
+  );
 
-  const streamData = Array.from({length:12},(_,i)=>({
-    month:`T${i+1}`,
-    hanoi:Math.round(70+Math.sin(i*0.5)*20),
-    hcm:Math.round(60+Math.sin(i*0.4)*15),
-    danang:Math.round(30+Math.sin(i*0.6)*10),
-  }));
+  const statistics = useMemo(() => {
+    const timeseries = compData?.timeseries ?? {};
+    return (compData?.stats ?? []).map(stat => {
+      const pid = stat.province_id;
+      const series = timeseries[pid] ?? timeseries[String(pid)] ?? [];
+      const aqiValues = series.map(p => p.value).filter(v => v != null);
+      return {
+        province_id: pid,
+        min: stat.aqi_min,
+        max: stat.aqi_max,
+        mean: stat.aqi_mean,
+        std: computeStd(aqiValues),
+      };
+    });
+  }, [compData]);
 
-  const statsRows = [
-    {label:"AQI Trung bình",hanoi:"78.2",hcm:"64.8",danang:"33.9"},
-    {label:"AQI Cao nhất",hanoi:"142",hcm:"118",danang:"67"},
-    {label:"AQI Thấp nhất",hanoi:"32",hcm:"28",danang:"12"},
-    {label:"Độ lệch chuẩn",hanoi:"18.4",hcm:"14.2",danang:"8.6"},
-    {label:"PM2.5 TB",hanoi:"34.2 µg/m³",hcm:"21.4 µg/m³",danang:"11.8 µg/m³"},
-    {label:"Ngày > WHO",hanoi:"187 ngày",hcm:"124 ngày",danang:"28 ngày"},
-    {label:"Ngày Tốt",hanoi:"42 ngày",hcm:"89 ngày",danang:"198 ngày"},
-  ];
+  const radarChartData = useMemo(() => {
+    return RADAR_METRICS.map(({ key, label }) => {
+      const row = { metric: label };
+      detailQueries.forEach((q, i) => {
+        const pid = activeProvinces[i];
+        row[`province_${pid}`] = q.data?.[key] ?? 0;
+      });
+      return row;
+    });
+  }, [detailQueries, activeProvinces]);
+
+  const toggleProvince = (id) => {
+    setCompareProvinces(prev => {
+      if (prev.includes(id)) return prev.filter(p => p !== id);
+      if (prev.length >= 3) return prev;
+      return [...prev, id];
+    });
+  };
+
+  const toggleVisibility = (id) => {
+    setVisibleState(prev => ({ ...prev, [id]: prev[id] === false ? true : false }));
+  };
 
   return (
-    <div style={{display:"flex",flexDirection:"column",gap:32}}>
-      {/* Province selector */}
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+
+      {/* Multi-select tối đa 3 tỉnh */}
       <section>
-        <div style={{display:"flex",gap:12,alignItems:"center",flexWrap:"wrap"}}>
-          {provs.map(({key,label,color})=>(
-            <button key={key} onClick={()=>setVisible(v=>({...v,[key]:!v[key]}))}
-              style={{background:visible[key]?`${color}22`:"rgba(255,255,255,0.03)",border:`2px solid ${visible[key]?color:C.border}`,borderRadius:24,padding:"8px 20px",color:visible[key]?color:C.muted,fontSize:13,cursor:"pointer",fontWeight:600,transition:"all 0.2s",...headFont}}>
-              ● {label}
-            </button>
-          ))}
-          <button style={{background:"rgba(255,255,255,0.04)",border:`1px dashed ${C.border}`,borderRadius:24,padding:"8px 20px",color:C.muted,fontSize:13,cursor:"pointer",...headFont}}>+ Thêm tỉnh</button>
+        <SectionHeader
+          title="Chọn tỉnh so sánh"
+          sub={`Tối đa 3 tỉnh · Kỳ: ${startDate} → ${endDate}`}
+        />
+        <div style={{ ...glassCard, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
+          {provinceList.length === 0 ? (
+            <span style={{ color: C.muted, fontSize: 13 }}>Đang tải danh sách tỉnh...</span>
+          ) : (
+            provinceList.map(p => {
+              const selected = compareProvinces.includes(p.province_id);
+              const disabled = !selected && compareProvinces.length >= 3;
+              return (
+                <button
+                  key={p.province_id}
+                  onClick={() => !disabled && toggleProvince(p.province_id)}
+                  style={{
+                    background: selected ? 'rgba(56,189,248,0.12)' : 'rgba(255,255,255,0.03)',
+                    border: `1px solid ${selected ? C.sky : 'rgba(255,255,255,0.1)'}`,
+                    borderRadius: 16,
+                    padding: '5px 14px',
+                    color: disabled ? 'rgba(255,255,255,0.2)' : selected ? C.sky : C.text,
+                    fontSize: 12,
+                    cursor: disabled ? 'not-allowed' : 'pointer',
+                    ...headFont,
+                  }}
+                >
+                  {p.province_name}
+                </button>
+              );
+            })
+          )}
         </div>
+        {compareProvinces.length >= 3 && (
+          <p style={{ color: C.warning, fontSize: 12, marginTop: 8 }}>
+            ⚠️ Đã đạt giới hạn 3 tỉnh. Bỏ chọn một tỉnh để thêm tỉnh khác.
+          </p>
+        )}
       </section>
 
-      {/* Multi-line AQI comparison */}
-      <section>
-        <SectionHeader title="So sánh AQI — 30 ngày" sub="Bật/tắt tỉnh bằng nút trên"/>
-        <div style={{...glassCard}}>
-          <ResponsiveContainer width="100%" height={300}>
-            {isLoading ? (
-              <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: C.muted}}>Loading...</div>
-            ) : (
-            <ComposedChart data={compareDataRaw.length > 0 ? compareDataRaw : compareData} margin={{top:10,right:20,bottom:0,left:0}}>
-              <defs>
-                {provs.map(({key,color})=>(
-                  <linearGradient key={key} id={`cg${key}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={color} stopOpacity={0.3}/>
-                    <stop offset="95%" stopColor={color} stopOpacity={0}/>
-                  </linearGradient>
-                ))}
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false}/>
-              <XAxis dataKey="day" tick={{fill:C.muted,fontSize:11}} axisLine={false} tickLine={false}/>
-              <YAxis tick={{fill:C.muted,fontSize:11}} axisLine={false} tickLine={false}/>
-              <Tooltip content={<DarkTooltip/>}/>
-              {visible.hanoi&&<Area type="monotone" dataKey="hanoi" stroke={C.sky} strokeWidth={2} fill="url(#cghanoi)" dot={false} name="Hà Nội" connectNulls/>}
-              {visible.hcm&&<Area type="monotone" dataKey="hcm" stroke={C.violet} strokeWidth={2} fill="url(#cghcm)" dot={false} name="TP.HCM" connectNulls/>}
-              {visible.danang&&<Area type="monotone" dataKey="danang" stroke={C.emerald} strokeWidth={2} fill="url(#cgdanang)" dot={false} name="Đà Nẵng" connectNulls/>}
-            </ComposedChart>
-            )}
-          </ResponsiveContainer>
+      {activeProvinces.length === 0 ? (
+        <div style={{ ...glassCard, padding: 40, textAlign: 'center', color: C.muted }}>
+          Vui lòng chọn ít nhất 1 tỉnh để tiến hành so sánh dữ liệu.
         </div>
-      </section>
+      ) : (
+        <>
+          {/* Toggle ẩn/hiện đường biểu đồ */}
+          <section>
+            <div style={{ display: 'flex', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+              {renderingProvinces.map(({ id, label, color }) => {
+                const isVisible = visibleState[id] !== false;
+                return (
+                  <button
+                    key={id}
+                    onClick={() => toggleVisibility(id)}
+                    style={{
+                      background: isVisible ? `${color}22` : 'rgba(255,255,255,0.03)',
+                      border: `2px solid ${isVisible ? color : 'rgba(255,255,255,0.1)'}`,
+                      borderRadius: 24,
+                      padding: '8px 20px',
+                      color: isVisible ? color : 'rgba(255,255,255,0.4)',
+                      fontSize: 13,
+                      cursor: 'pointer',
+                      fontWeight: 600,
+                      transition: 'all 0.2s',
+                      ...headFont,
+                    }}
+                  >
+                    ● {label}
+                  </button>
+                );
+              })}
+            </div>
+          </section>
 
-      {/* Radar + Scatter */}
-      <section>
-        <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:20}}>
-          <div style={{...glassCard}}>
-            <SectionHeader title="Radar 6 chỉ số"/>
-            <ResponsiveContainer width="100%" height={280}>
-              <RadarChart data={radarData}>
-                <PolarGrid stroke="rgba(255,255,255,0.08)"/>
-                <PolarAngleAxis dataKey="metric" tick={{fill:C.muted,fontSize:11}}/>
-                {visible.hanoi&&<Radar name="Hà Nội" dataKey="hanoi" stroke={C.sky} fill={C.sky} fillOpacity={0.15} strokeWidth={2}/>}
-                {visible.hcm&&<Radar name="TP.HCM" dataKey="hcm" stroke={C.violet} fill={C.violet} fillOpacity={0.15} strokeWidth={2}/>}
-                {visible.danang&&<Radar name="Đà Nẵng" dataKey="danang" stroke={C.emerald} fill={C.emerald} fillOpacity={0.15} strokeWidth={2}/>}
-                <Tooltip content={<DarkTooltip/>}/>
-              </RadarChart>
-            </ResponsiveContainer>
-          </div>
+          {/* Multi-line chart AQI */}
+          <section>
+            <SectionHeader
+              title="Biểu đồ xu hướng AQI"
+              sub="So sánh AQI theo thời gian · Nhấp tên tỉnh để ẩn/hiện"
+            />
+            <div style={{ ...glassCard }}>
+              <ResponsiveContainer width="100%" height={320}>
+                {isLoading ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: C.muted }}>
+                    Đang tải dữ liệu so sánh...
+                  </div>
+                ) : isError ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: C.danger }}>
+                    Có lỗi khi tải dữ liệu. Vui lòng thử lại.
+                  </div>
+                ) : timeSeriesData.length === 0 ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: C.muted }}>
+                    Không có dữ liệu trong khoảng thời gian đã chọn.
+                  </div>
+                ) : (
+                  <LineChart data={timeSeriesData} margin={{ top: 10, right: 20, bottom: 0, left: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                    <XAxis dataKey="displayTime" tick={{ fill: C.muted, fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: C.muted, fontSize: 11 }} axisLine={false} tickLine={false} domain={[0, 'dataMax + 30']} />
+                    <Tooltip content={<DarkTooltip />} />
+                    <Legend iconType="circle" wrapperStyle={{ fontSize: 12, paddingTop: 10 }} />
+                    {renderingProvinces.map(({ id, label, color }) => {
+                      if (visibleState[id] === false) return null;
+                      return (
+                        <Line
+                          key={id}
+                          type="monotone"
+                          dataKey={`province_${id}`}
+                          stroke={color}
+                          strokeWidth={2}
+                          dot={false}
+                          name={label}
+                          connectNulls
+                        />
+                      );
+                    })}
+                  </LineChart>
+                )}
+              </ResponsiveContainer>
+            </div>
+          </section>
 
-          <div style={{...glassCard}}>
-            <SectionHeader title="PM2.5 vs Nhiệt độ"/>
-            <ResponsiveContainer width="100%" height={280}>
-              <ScatterChart margin={{top:10,right:20,bottom:10,left:0}}>
-                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)"/>
-                <XAxis dataKey="t" name="Nhiệt độ" unit="°C" tick={{fill:C.muted,fontSize:11}} axisLine={false}/>
-                <YAxis dataKey="pm" name="PM2.5" unit=" µg" tick={{fill:C.muted,fontSize:11}} axisLine={false}/>
-                <Tooltip content={<DarkTooltip/>} cursor={{fill:"rgba(255,255,255,0.02)"}}/>
-                {visible.hanoi&&<Scatter data={scatterD.filter(d=>d.p==="hanoi")} fill={C.sky} name="Hà Nội" opacity={0.7}/>}
-                {visible.hcm&&<Scatter data={scatterD.filter(d=>d.p==="hcm")} fill={C.violet} name="TP.HCM" opacity={0.7}/>}
-                {visible.danang&&<Scatter data={scatterD.filter(d=>d.p==="danang")} fill={C.emerald} name="Đà Nẵng" opacity={0.7}/>}
-              </ScatterChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-      </section>
-
-      {/* Monthly heatmap */}
-      <section>
-        <SectionHeader title="So sánh AQI theo tháng — 3 tỉnh"/>
-        <div style={{...glassCard}}>
-          {provs.map(({key,label,color})=>(
-            <div key={key} style={{marginBottom:16}}>
-              <p style={{color,fontSize:12,margin:"0 0 6px",fontWeight:600,...headFont}}>{label}</p>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(12,1fr)",gap:4}}>
-                {monthlyComp.map((d,i)=>{
-                  const v=d[key];
-                  return (
-                    <div key={i} title={`${d.month}: AQI ${v}`}
-                      style={{height:32,borderRadius:6,background:aqiColor(v),opacity:v/120,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,color:"#fff",fontWeight:600,...monoFont}}>
-                      {v}
+          {/* Radar + Bảng thống kê */}
+          <section>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start' }}>
+              <div style={{ ...glassCard }}>
+                <SectionHeader
+                  title="Radar cơ cấu thành phần"
+                  sub="Giá trị đo mới nhất của 7 biến môi trường"
+                />
+                <ResponsiveContainer width="100%" height={280}>
+                  {detailQueries.some(q => q.isLoading) ? (
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: C.muted }}>
+                      Đang tải...
                     </div>
-                  );
-                })}
+                  ) : (
+                    <RadarChart data={radarChartData}>
+                      <PolarGrid stroke="rgba(255,255,255,0.08)" />
+                      <PolarAngleAxis dataKey="metric" tick={{ fill: C.muted, fontSize: 11 }} />
+                      <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={{ fill: C.muted, fontSize: 9 }} />
+                      {renderingProvinces.map(({ id, label, color }) => {
+                        if (visibleState[id] === false) return null;
+                        return (
+                          <Radar
+                            key={id}
+                            name={label}
+                            dataKey={`province_${id}`}
+                            stroke={color}
+                            fill={color}
+                            fillOpacity={0.12}
+                            strokeWidth={2}
+                          />
+                        );
+                      })}
+                      <Tooltip content={<DarkTooltip />} />
+                      <Legend iconType="square" wrapperStyle={{ fontSize: 11 }} />
+                    </RadarChart>
+                  )}
+                </ResponsiveContainer>
               </div>
-              <div style={{display:"grid",gridTemplateColumns:"repeat(12,1fr)",gap:4,marginTop:2}}>
-                {monthlyComp.map((d,i)=><div key={i} style={{textAlign:"center",fontSize:10,color:C.muted,...monoFont}}>{d.month}</div>)}
+
+              <div style={{ ...glassCard, padding: 0, overflow: 'hidden' }}>
+                <div style={{ padding: '16px 20px 8px 20px' }}>
+                  <SectionHeader title="Chỉ số thống kê mô tả (AQI)" />
+                </div>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: 'rgba(255,255,255,0.03)' }}>
+                      <th style={{ padding: '14px 20px', textAlign: 'left', color: C.muted, fontSize: 12, ...headFont }}>
+                        Chỉ số
+                      </th>
+                      {renderingProvinces.map(({ id, label, color }) => (
+                        <th key={id} style={{ padding: '14px 20px', textAlign: 'center', color, fontSize: 13, ...headFont }}>
+                          {label}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {[
+                      { key: 'min', label: 'Thấp nhất (Min)' },
+                      { key: 'max', label: 'Cao nhất (Max)' },
+                      { key: 'mean', label: 'Trung bình (Mean)' },
+                      { key: 'std', label: 'Độ lệch chuẩn (Std)' },
+                    ].map((metricRow, idx) => (
+                      <tr key={idx} style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
+                        <td style={{ padding: '12px 20px', color: C.muted, fontSize: 13, ...headFont }}>
+                          {metricRow.label}
+                        </td>
+                        {renderingProvinces.map(({ id }) => {
+                          const provStat = statistics.find(s => String(s.province_id) === id);
+                          const rawValue = provStat ? provStat[metricRow.key] : null;
+                          const displayValue = typeof rawValue === 'number' ? rawValue.toFixed(1) : 'N/A';
+                          return (
+                            <td key={id} style={{ padding: '12px 20px', textAlign: 'center', color: '#fff', fontSize: 13, fontWeight: 600, ...monoFont }}>
+                              {displayValue}
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             </div>
-          ))}
-        </div>
-      </section>
-
-      {/* Stats table */}
-      <section>
-        <SectionHeader title="Bảng thống kê tổng hợp"/>
-        <div style={{...glassCard,padding:0,overflow:"hidden"}}>
-          <table style={{width:"100%",borderCollapse:"collapse"}}>
-            <thead>
-              <tr style={{background:"rgba(255,255,255,0.03)"}}>
-                <th style={{padding:"14px 20px",textAlign:"left",color:C.muted,fontSize:12,...headFont}}>Chỉ số</th>
-                {provs.map(({label,color})=>(
-                  <th key={label} style={{padding:"14px 20px",textAlign:"center",color,fontSize:13,...headFont}}>{label}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {statsRows.map((row,i)=>(
-                <tr key={i} style={{borderTop:`1px solid rgba(255,255,255,0.04)`}}>
-                  <td style={{padding:"12px 20px",color:C.muted,fontSize:13,...headFont}}>{row.label}</td>
-                  {provs.map(({key,color})=>(
-                    <td key={key} style={{padding:"12px 20px",textAlign:"center",color:C.text,fontSize:13,fontWeight:600,...monoFont}}>{row[key]}</td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      {/* Stream chart */}
-      <section>
-        <SectionHeader title="Xu hướng AQI theo tháng — 3 tỉnh"/>
-        <div style={{...glassCard}}>
-          <ResponsiveContainer width="100%" height={220}>
-            <AreaChart data={streamData} margin={{top:10,right:20,bottom:0,left:0}}>
-              <defs>
-                {provs.map(({key,color})=>(
-                  <linearGradient key={key} id={`stg${key}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor={color} stopOpacity={0.6}/>
-                    <stop offset="95%" stopColor={color} stopOpacity={0.1}/>
-                  </linearGradient>
-                ))}
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false}/>
-              <XAxis dataKey="month" tick={{fill:C.muted,fontSize:11}} axisLine={false} tickLine={false}/>
-              <YAxis tick={{fill:C.muted,fontSize:11}} axisLine={false} tickLine={false}/>
-              <Tooltip content={<DarkTooltip/>}/>
-              {visible.hanoi&&<Area type="monotone" dataKey="hanoi" stackId="1" stroke={C.sky} fill={`url(#stghanoi)`} name="Hà Nội"/>}
-              {visible.hcm&&<Area type="monotone" dataKey="hcm" stackId="1" stroke={C.violet} fill={`url(#stghcm)`} name="TP.HCM"/>}
-              {visible.danang&&<Area type="monotone" dataKey="danang" stackId="1" stroke={C.emerald} fill={`url(#stgdanang)`} name="Đà Nẵng"/>}
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </section>
+          </section>
+        </>
+      )}
     </div>
   );
 };
-
-// ─── ALERTS TAB ───────────────────────────────────────────────────────────────
 
 export default CompareTab;
