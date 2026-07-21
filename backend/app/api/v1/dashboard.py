@@ -6,6 +6,8 @@ Không có business logic ở đây.
 
 from datetime import date, timedelta
 import asyncio
+from typing import Literal
+
 from fastapi import APIRouter, Depends, Query, HTTPException, WebSocket, WebSocketDisconnect
 
 from app.db.connection import get_pool
@@ -98,6 +100,30 @@ async def get_trend(
     Cache TTL: 30 phút.
     """
     return await data_service.get_aqi_trend(pool, start_date, end_date, province_id)
+
+
+# ── Timeseries (metric bất kỳ) ────────────────────────────────────────────────
+
+MetricName = Literal[
+    "pm2_5", "pm10", "carbon_monoxide", "nitrogen_dioxide",
+    "sulphur_dioxide", "ozone", "dust", "european_aqi",
+]
+
+
+@router.get("/timeseries")
+async def get_timeseries(
+    metric:      MetricName  = Query("pm2_5", description="Biến cần xem chuỗi thời gian"),
+    province_id: int | None  = Query(None, description="ID tỉnh. Bỏ trống = trung bình toàn quốc."),
+    start_date:  date        = Query(default_factory=_default_start),
+    end_date:    date        = Query(default_factory=_default_end),
+    pool=Depends(get_pool),
+):
+    """
+    Dữ liệu theo giờ của một metric — dùng cho line chart Tab Phân tích.
+    Nếu không truyền province_id → trung bình toàn quốc theo giờ.
+    Cache TTL: 30 phút.
+    """
+    return await data_service.get_metric_timeseries(pool, province_id, metric, start_date, end_date)
 
 
 # ── Top polluted ──────────────────────────────────────────────────────────────

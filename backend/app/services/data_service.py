@@ -109,6 +109,23 @@ async def get_aqi_trend(
     }
 
 
+async def get_metric_timeseries(
+    pool: asyncpg.Pool,
+    province_id: int | None,
+    metric: str,
+    start_date: date,
+    end_date: date,
+) -> dict:
+    """Chuỗi thời gian theo giờ của một metric — Tab Phân tích."""
+    data = await queries.get_timeseries(pool, province_id, metric, start_date, end_date)
+    return {
+        "province_id": province_id,
+        "metric": metric,
+        "period": {"start": str(start_date), "end": str(end_date)},
+        "data": data,
+    }
+
+
 async def get_top_polluted(
     pool: asyncpg.Pool,
     start_date: date,

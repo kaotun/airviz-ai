@@ -19,6 +19,13 @@ export const dashboardApi = {
       params: { start_date: startDate, end_date: endDate, province_id: provinceId }
     }).then(r => r.data),
 
+  getTimeseries: (params: {
+    metric: string
+    province_id?: number | null
+    start_date: string
+    end_date: string
+  }) => api.get('/dashboard/timeseries', { params }).then(r => r.data),
+
   getTopPolluted: (startDate: string, endDate: string, limit = 5) =>
     api.get('/dashboard/top-polluted', {
       params: { start_date: startDate, end_date: endDate, limit }

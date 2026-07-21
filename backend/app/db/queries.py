@@ -153,14 +153,14 @@ async def get_province_detail(
 
 async def get_timeseries(
     pool: asyncpg.Pool,
-    province_id: int,
+    province_id: int | None,
     metric: str,
     start_date: date,
     end_date: date,
 ) -> list[dict]:
     """
-    Time-series theo giờ của một metric cho một tỉnh.
-    Dùng cho line chart trong Tab Phân tích.
+    Time-series theo giờ của một metric — dùng cho line chart Tab Phân tích.
+    province_id = None → trung bình toàn quốc theo giờ.
     CẢNH BÁO: metric phải được validate trước khi đưa vào — dùng whitelist.
     """
     ALLOWED_METRICS = {
@@ -170,20 +170,35 @@ async def get_timeseries(
     if metric not in ALLOWED_METRICS:
         raise ValueError(f"Metric không hợp lệ: {metric}")
 
-    # Không dùng f-string để tránh SQL injection — asyncpg không hỗ trợ
-    # dynamic column name với $N, nên ta validate whitelist ở trên
-    rows = await pool.fetch(
-        f"""
-        SELECT time, {metric} AS value
-        FROM env_readings
-        WHERE province_id = $1
-          AND time >= $2::date
-          AND time <  $3::date + INTERVAL '1 day'
-          AND {metric} IS NOT NULL
-        ORDER BY time
-        """,
-        province_id, start_date, end_date,
-    )
+    # Không dùng f-string cho giá trị — chỉ cho tên cột đã qua whitelist,
+    # vì asyncpg không hỗ trợ bind dynamic column name bằng $N.
+    if province_id:
+        rows = await pool.fetch(
+            f"""
+            SELECT time, {metric} AS value
+            FROM env_readings
+            WHERE province_id = $1
+              AND time >= $2::date
+              AND time <  $3::date + INTERVAL '1 day'
+              AND {metric} IS NOT NULL
+            ORDER BY time
+            """,
+            province_id, start_date, end_date,
+        )
+    else:
+        # Toàn quốc: trung bình cộng các tỉnh theo từng giờ
+        rows = await pool.fetch(
+            f"""
+            SELECT time, ROUND(AVG({metric})::NUMERIC, 2) AS value
+            FROM env_readings
+            WHERE time >= $1::date
+              AND time <  $2::date + INTERVAL '1 day'
+              AND {metric} IS NOT NULL
+            GROUP BY time
+            ORDER BY time
+            """,
+            start_date, end_date,
+        )
     return [{"time": r["time"].isoformat(), "value": r["value"]} for r in rows]
 
 

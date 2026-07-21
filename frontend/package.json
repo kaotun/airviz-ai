@@ -17,6 +17,7 @@
     "leaflet": "^1.9.4",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
+    "react-heatmap-grid": "^0.9.1",
     "react-leaflet": "^5.0.0",
     "react-router-dom": "^7.18.0",
     "recharts": "^3.9.0",
