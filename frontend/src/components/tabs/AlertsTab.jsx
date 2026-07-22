@@ -1,4 +1,4 @@
-﻿import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { dashboardApi, analyticsApi } from '../../api/dashboard';
 import { useFilterStore } from '../../store/filterStore';
@@ -11,6 +11,7 @@ import {
 import {
   C, glassCard, monoFont, headFont, DarkTooltip, SectionHeader,
 } from '../../utils/dashboardConstants';
+import TabFilterBar from '../TabFilterBar';
 
 const METRIC_LABELS = {
   pm2_5: 'PM2.5',
@@ -60,7 +61,9 @@ function getContextWindow(anomalies, selectedTime, hours = 3) {
 }
 
 const AlertsTab = () => {
-  const { selectedProvinceId, selectedProvinceName, selectedMetric, startDate, endDate } = useFilterStore();
+  const { selectedProvinces, selectedMetric, startDate, endDate } = useFilterStore();
+  const selectedProvinceId = selectedProvinces[0]?.id;
+  const selectedProvinceName = selectedProvinces[0]?.name;
   const [selectedAnomaly, setSelectedAnomaly] = useState(null);
 
   const { data: mapData } = useQuery({
@@ -141,6 +144,7 @@ const AlertsTab = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
+      <TabFilterBar showDateRange showProvince showMetric />
 
       {/* KPI cards */}
       <section>
@@ -148,7 +152,7 @@ const AlertsTab = () => {
           title="Tổng quan bất thường"
           sub={`Metric: ${metricLabel} · Kỳ: ${startDate} → ${endDate}${selectedProvinceName ? ` · ${selectedProvinceName}` : ' · Toàn quốc'}`}
         />
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
+        <div className="responsive-grid grid-cols-3">
           {[
             {
               label: 'Tổng bất thường',
@@ -178,9 +182,9 @@ const AlertsTab = () => {
               onMouseLeave={e => { e.currentTarget.style.boxShadow = 'none'; }}
             >
               <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, margin: '0 auto 12px', animation: 'pulse 2s infinite' }} />
-              <p style={{ color: C.muted, fontSize: 12, margin: '0 0 8px', ...headFont }}>{label}</p>
+              <p style={{ color: C.muted, fontSize: 14, margin: '0 0 8px', ...headFont }}>{label}</p>
               <p style={{ color, fontSize: 18, fontWeight: 700, margin: '0 0 4px', ...monoFont }}>{value}</p>
-              <p style={{ color: C.muted, fontSize: 12, margin: 0 }}>{sub}</p>
+              <p style={{ color: C.muted, fontSize: 14, margin: 0 }}>{sub}</p>
             </div>
           ))}
         </div>
@@ -210,10 +214,10 @@ const AlertsTab = () => {
             ) : (
               <LineChart data={chartData} margin={{ top: 10, right: 20, bottom: 0, left: 0 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
-                <XAxis dataKey="displayTime" tick={{ fill: C.muted, fontSize: 11 }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fill: C.muted, fontSize: 11 }} axisLine={false} tickLine={false} />
+                <XAxis dataKey="displayTime" tick={{ fill: C.muted, fontSize: 13 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fill: C.muted, fontSize: 13 }} axisLine={false} tickLine={false} />
                 <Tooltip content={<DarkTooltip />} />
-                <Legend wrapperStyle={{ fontSize: 12 }} />
+                <Legend wrapperStyle={{ fontSize: 14 }} />
                 {chartData.length > 0 && (
                   <Line
                     type="monotone"
@@ -253,7 +257,7 @@ const AlertsTab = () => {
             <thead>
               <tr style={{ background: 'rgba(248,113,113,0.06)', borderBottom: '1px solid rgba(248,113,113,0.15)' }}>
                 {['Tỉnh', 'Thời điểm', 'Giá trị đo', 'Z-score', 'Mức độ'].map(h => (
-                  <th key={h} style={{ padding: '12px 16px', textAlign: 'left', color: C.muted, fontSize: 11, ...headFont }}>
+                  <th key={h} style={{ padding: '12px 16px', textAlign: 'left', color: C.muted, fontSize: 13, ...headFont }}>
                     {h}
                   </th>
                 ))}
@@ -288,13 +292,13 @@ const AlertsTab = () => {
                       onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = 'rgba(248,113,113,0.04)'; }}
                       onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = 'transparent'; }}
                     >
-                      <td style={{ padding: '10px 16px', color: C.text, fontSize: 13, ...headFont }}>
+                      <td style={{ padding: '10px 16px', color: C.text, fontSize: 15, ...headFont }}>
                         {provinceNameMap[a.province_id] || `Tỉnh ${a.province_id}`}
                       </td>
-                      <td style={{ padding: '10px 16px', color: C.muted, fontSize: 12, ...monoFont }}>
+                      <td style={{ padding: '10px 16px', color: C.muted, fontSize: 14, ...monoFont }}>
                         {formatDateTime(a.time)}
                       </td>
-                      <td style={{ padding: '10px 16px', color: C.text, fontSize: 12, fontWeight: 700, ...monoFont }}>
+                      <td style={{ padding: '10px 16px', color: C.text, fontSize: 14, fontWeight: 700, ...monoFont }}>
                         {a.value != null ? a.value.toFixed(2) : '—'}
                       </td>
                       <td style={{ padding: '10px 16px' }}>
@@ -308,7 +312,7 @@ const AlertsTab = () => {
                           border: `1px solid ${color}`,
                           borderRadius: 12,
                           padding: '3px 10px',
-                          fontSize: 11,
+                          fontSize: 13,
                           color,
                           ...headFont,
                         }}>
@@ -333,7 +337,7 @@ const AlertsTab = () => {
           />
           <div style={{ ...glassCard }}>
             {contextAnomalies.length === 0 ? (
-              <p style={{ color: C.muted, fontSize: 13, margin: 0 }}>
+              <p style={{ color: C.muted, fontSize: 15, margin: 0 }}>
                 Không có sự kiện bất thường nào khác trong cửa sổ ±3 giờ.
               </p>
             ) : (
@@ -355,15 +359,15 @@ const AlertsTab = () => {
                         border: isCenter ? `1px solid ${color}44` : '1px solid rgba(255,255,255,0.04)',
                       }}
                     >
-                      <span style={{ color: C.muted, fontSize: 12, ...monoFont }}>{formatDateTime(a.time)}</span>
-                      <span style={{ color: C.text, fontSize: 13, ...headFont }}>
+                      <span style={{ color: C.muted, fontSize: 14, ...monoFont }}>{formatDateTime(a.time)}</span>
+                      <span style={{ color: C.text, fontSize: 15, ...headFont }}>
                         {provinceNameMap[a.province_id]} · {METRIC_LABELS[a.metric] ?? a.metric}
                         {isCenter && <span style={{ color, marginLeft: 8 }}>← điểm đang xem</span>}
                       </span>
-                      <span style={{ color: C.text, fontSize: 12, fontWeight: 700, ...monoFont }}>
+                      <span style={{ color: C.text, fontSize: 14, fontWeight: 700, ...monoFont }}>
                         {a.value?.toFixed(2)}
                       </span>
-                      <span style={{ color, fontSize: 12, fontWeight: 700, ...monoFont }}>
+                      <span style={{ color, fontSize: 14, fontWeight: 700, ...monoFont }}>
                         {a.z_score?.toFixed(2)}σ
                       </span>
                     </div>

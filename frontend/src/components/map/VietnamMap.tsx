@@ -50,16 +50,37 @@ export default function VietnamMap({ onProvinceClick }: { onProvinceClick: (name
 
     useWebSocket();
 
+    // Lấy tâm các tỉnh sau khi có feature
+    useEffect(() => {
+        if (geoData && centers.length === 0 && geoData.features.length > 0) {
+            const computedCenters = geoData.features.map((f: any) => ({
+                name: f.properties.Name || f.properties.name,
+                center: getBoundingBoxCenter(f.geometry)
+            }));
+            setCenters(computedCenters);
+        }
+    }, [geoData]);
+
     if (!geoData) return <div style={{color:'white', padding: 20}}>Đang tải bản đồ...</div>;
 
     const features = geoData.features.map((feature: any) => {
         const rawName = feature.properties.Name || feature.properties.name || '';
-        const normalize = (str: string) => {
-            if (!str) return '';
-            return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase().replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
+        const aliasMap: Record<string, string> = {
+            'ho chi minh city': 'thanh pho ho chi minh',
+            'ha noi city': 'ha noi',
+            'hai phong city': 'hai phong',
+            'da nang city': 'da nang',
+            'can tho city': 'can tho'
         };
 
-        const aqiData = mapData?.find((p: any) => normalize(p.province_name) === normalize(rawName));
+        const normalize = (str: string) => {
+            if (!str) return '';
+            const s = str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/đ/g, "d").replace(/Đ/g, "D").toLowerCase().replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
+            return aliasMap[s] || s;
+        };
+
+        const mapDataArray = Array.isArray(mapData) ? mapData : (mapData?.provinces ?? mapData?.data ?? []);
+        const aqiData = mapDataArray.find((p: any) => normalize(p.province_name) === normalize(rawName));
         const provinceName = aqiData ? aqiData.province_name : rawName; 
 
         return {
@@ -75,14 +96,7 @@ export default function VietnamMap({ onProvinceClick }: { onProvinceClick: (name
 
     const styledGeoJSON = { ...geoData, features };
 
-    // Lấy tâm các tỉnh sau khi có feature
-    if (centers.length === 0 && features.length > 0) {
-        const computedCenters = features.map((f: any) => ({
-            name: f.properties.name,
-            center: getBoundingBoxCenter(f.geometry)
-        }));
-        setCenters(computedCenters);
-    }
+
 
     const starIcon = L.divIcon({
         html: '<div style="font-size: 14px; text-shadow: 0 0 5px yellow; margin-top: -6px; margin-left: -6px;">⭐</div>',
@@ -99,8 +113,15 @@ export default function VietnamMap({ onProvinceClick }: { onProvinceClick: (name
                 style={{ height: '100%', width: '100%', background: 'transparent' }}
                 zoomControl={false}
                 attributionControl={false}
+                dragging={false}
+                scrollWheelZoom={false}
+                doubleClickZoom={false}
+                touchZoom={false}
+                boxZoom={false}
+                keyboard={false}
             >
                 <GeoJSON
+                    key={features.map((f: any) => f.properties.aqi || 'x').join(',')}
                     data={styledGeoJSON as any}
                     style={(feature: any) => ({
                         fillColor: getAQIColor(feature.properties.aqi),
@@ -114,7 +135,7 @@ export default function VietnamMap({ onProvinceClick }: { onProvinceClick: (name
                         const aqi = feature.properties.aqi;
                         
                         layer.bindTooltip(`
-                            <div style="text-align:center; font-family: 'Space Grotesk', sans-serif;">
+                            <div style="text-align:center; font-family: 'Inter', sans-serif;">
                                 <b>${name}</b><br/>
                                 ${aqi ? `AQI: <b>${Math.round(aqi)}</b>` : 'Chưa có dữ liệu'}
                             </div>

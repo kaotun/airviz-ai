@@ -1,3 +1,43 @@
-/* Reset cơ bản — design system thật nằm trong AirvizDashboard.jsx (injected via <style> tag) */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;700&display=swap');
+
+:root {
+  --bg: #050a14;
+  --card: #0d1626;
+  --text: #f8fafc;
+  --muted: #94a3b8;
+  --border: rgba(99,179,237,0.12);
+}
+
+[data-theme="light"] {
+  --bg: #f1f5f9;
+  --card: #ffffff;
+  --text: #020617;
+  --muted: #334155;
+  --border: rgba(15, 23, 42, 0.15);
+}
+
+/* Reset cơ bản */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html, body, #root { height: 100%; }
+html, body, #root { height: 100%; font-family: 'Inter', sans-serif; background-color: var(--bg); color: var(--text); transition: background-color 0.3s, color 0.3s; }
+
+/* Responsive Grids */
+.responsive-grid {
+  display: grid;
+  gap: 20px;
+}
+
+.grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
+.grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+.grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+
+@media (max-width: 1024px) {
+  .grid-cols-4 { grid-template-columns: repeat(2, 1fr); }
+  .grid-cols-3 { grid-template-columns: repeat(2, 1fr); }
+}
+
+@media (max-width: 768px) {
+  .grid-cols-4 { grid-template-columns: 1fr; }
+  .grid-cols-3 { grid-template-columns: 1fr; }
+  .grid-cols-2 { grid-template-columns: 1fr; }
+  .flex-responsive { flex-direction: column !important; align-items: stretch !important; }
+}

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useQuery, useQueries } from '@tanstack/react-query';
 import { dashboardApi } from '../../api/dashboard';
 import { useFilterStore } from '../../store/filterStore';
+import { exportToCSV } from '../../utils/exportUtils';
 
 import {
   LineChart, Line, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -9,20 +10,26 @@ import {
 } from 'recharts';
 
 import {
-  C, glassCard, monoFont, headFont, DarkTooltip, SectionHeader,
+  C,  glassCard, monoFont, headFont, chartDefaults, DarkTooltip, SectionHeader
 } from '../../utils/dashboardConstants';
+import TabFilterBar from '../TabFilterBar';
 
 const COLOR_PALETTE = [C.sky, C.violet, C.emerald];
 
 const RADAR_METRICS = [
-  { key: 'pm2_5', label: 'PM2.5' },
-  { key: 'pm10', label: 'PM10' },
-  { key: 'carbon_monoxide', label: 'CO' },
-  { key: 'nitrogen_dioxide', label: 'NO₂' },
-  { key: 'sulphur_dioxide', label: 'SO₂' },
-  { key: 'ozone', label: 'O₃' },
-  { key: 'dust', label: 'Dust' },
+  { key: 'pm2_5', label: 'PM2.5', limit: 50 },
+  { key: 'pm10', label: 'PM10', limit: 150 },
+  { key: 'carbon_monoxide', label: 'CO', limit: 10000 },
+  { key: 'nitrogen_dioxide', label: 'NO₂', limit: 100 },
+  { key: 'sulphur_dioxide', label: 'SO₂', limit: 50 },
+  { key: 'ozone', label: 'O₃', limit: 100 },
+  { key: 'dust', label: 'Dust', limit: 300 },
 ];
+
+const getMetricLabel = (key) => {
+  if (key === 'european_aqi') return 'AQI';
+  return RADAR_METRICS.find(m => m.key === key)?.label ?? key;
+};
 
 function formatDateLabel(dateStr) {
   const d = new Date(dateStr);
@@ -60,7 +67,8 @@ function unwrapProvinces(mapData) {
 }
 
 const CompareTab = () => {
-  const { selectedProvinceId, startDate, endDate } = useFilterStore();
+  const { selectedProvinces, startDate, endDate, selectedMetric } = useFilterStore();
+  const selectedProvinceId = selectedProvinces[0]?.id;
   const [compareProvinces, setCompareProvinces] = useState([]);
   const [visibleState, setVisibleState] = useState({});
 
@@ -82,8 +90,8 @@ const CompareTab = () => {
   const compareIdsStr = activeProvinces.join(',');
 
   const { data: compData, isLoading, isError } = useQuery({
-    queryKey: ['comparison', startDate, endDate, compareIdsStr],
-    queryFn: () => dashboardApi.getComparison(activeProvinces, startDate, endDate),
+    queryKey: ['comparison', startDate, endDate, compareIdsStr, selectedMetric],
+    queryFn: () => dashboardApi.getComparison(activeProvinces, selectedMetric || 'european_aqi', startDate, endDate),
     enabled: activeProvinces.length > 0,
   });
 
@@ -132,11 +140,13 @@ const CompareTab = () => {
   }, [compData]);
 
   const radarChartData = useMemo(() => {
-    return RADAR_METRICS.map(({ key, label }) => {
+    return RADAR_METRICS.map(({ key, label, limit }) => {
       const row = { metric: label };
       detailQueries.forEach((q, i) => {
         const pid = activeProvinces[i];
-        row[`province_${pid}`] = q.data?.[key] ?? 0;
+        const val = q.data?.[key] ?? 0;
+        row[`province_${pid}`] = limit ? Math.round((val / limit) * 100) : val;
+        row[`raw_${pid}`] = typeof val === 'number' ? val.toFixed(1) : val;
       });
       return row;
     });
@@ -156,8 +166,8 @@ const CompareTab = () => {
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 32 }}>
-
-      {/* Multi-select tối đa 3 tỉnh */}
+      <TabFilterBar showDateRange showProvince={false} showMetric />
+      {/* ── Multi-Province Selector ────────────────────────────────────── */}
       <section>
         <SectionHeader
           title="Chọn tỉnh so sánh"
@@ -165,7 +175,7 @@ const CompareTab = () => {
         />
         <div style={{ ...glassCard, display: 'flex', flexWrap: 'wrap', gap: 8 }}>
           {provinceList.length === 0 ? (
-            <span style={{ color: C.muted, fontSize: 13 }}>Đang tải danh sách tỉnh...</span>
+            <span style={{ color: C.muted, fontSize: 15 }}>Đang tải danh sách tỉnh...</span>
           ) : (
             provinceList.map(p => {
               const selected = compareProvinces.includes(p.province_id);
@@ -175,12 +185,13 @@ const CompareTab = () => {
                   key={p.province_id}
                   onClick={() => !disabled && toggleProvince(p.province_id)}
                   style={{
-                    background: selected ? 'rgba(56,189,248,0.12)' : 'rgba(255,255,255,0.03)',
-                    border: `1px solid ${selected ? C.sky : 'rgba(255,255,255,0.1)'}`,
+                    background: selected ? 'rgba(56,189,248,0.12)' : 'transparent',
+                    border: `1px solid ${selected ? C.sky : C.border}`,
                     borderRadius: 16,
                     padding: '5px 14px',
-                    color: disabled ? 'rgba(255,255,255,0.2)' : selected ? C.sky : C.text,
-                    fontSize: 12,
+                    color: selected ? C.sky : C.text,
+                    opacity: disabled ? 0.4 : 1,
+                    fontSize: 14,
                     cursor: disabled ? 'not-allowed' : 'pointer',
                     ...headFont,
                   }}
@@ -192,7 +203,7 @@ const CompareTab = () => {
           )}
         </div>
         {compareProvinces.length >= 3 && (
-          <p style={{ color: C.warning, fontSize: 12, marginTop: 8 }}>
+          <p style={{ color: C.warning, fontSize: 14, marginTop: 8 }}>
             ⚠️ Đã đạt giới hạn 3 tỉnh. Bỏ chọn một tỉnh để thêm tỉnh khác.
           </p>
         )}
@@ -214,12 +225,12 @@ const CompareTab = () => {
                     key={id}
                     onClick={() => toggleVisibility(id)}
                     style={{
-                      background: isVisible ? `${color}22` : 'rgba(255,255,255,0.03)',
-                      border: `2px solid ${isVisible ? color : 'rgba(255,255,255,0.1)'}`,
+                      background: isVisible ? `${color}22` : 'transparent',
+                      border: `2px solid ${isVisible ? color : C.border}`,
                       borderRadius: 24,
                       padding: '8px 20px',
-                      color: isVisible ? color : 'rgba(255,255,255,0.4)',
-                      fontSize: 13,
+                      color: isVisible ? color : C.muted,
+                      fontSize: 15,
                       cursor: 'pointer',
                       fontWeight: 600,
                       transition: 'all 0.2s',
@@ -236,9 +247,25 @@ const CompareTab = () => {
           {/* Multi-line chart AQI */}
           <section>
             <SectionHeader
-              title="Biểu đồ xu hướng AQI"
-              sub="So sánh AQI theo thời gian · Nhấp tên tỉnh để ẩn/hiện"
-            />
+              title={`Biểu đồ xu hướng ${getMetricLabel(selectedMetric || 'european_aqi')}`}
+              sub={`So sánh ${getMetricLabel(selectedMetric || 'european_aqi')} theo thời gian · Nhấp tên tỉnh để ẩn/hiện`}
+            >
+              <button
+                onClick={() => exportToCSV(timeSeriesData, `Comparison_${getMetricLabel(selectedMetric || 'european_aqi')}_${startDate}_${endDate}`)}
+                style={{
+                  background: 'rgba(56,189,248,0.1)',
+                  border: `1px solid ${C.sky}`,
+                  color: C.sky,
+                  padding: '6px 12px',
+                  borderRadius: 6,
+                  cursor: 'pointer',
+                  fontSize: 14,
+                  fontWeight: 600,
+                }}
+              >
+                📥 Xuất CSV
+              </button>
+            </SectionHeader>
             <div style={{ ...glassCard }}>
               <ResponsiveContainer width="100%" height={320}>
                 {isLoading ? (
@@ -246,7 +273,7 @@ const CompareTab = () => {
                     Đang tải dữ liệu so sánh...
                   </div>
                 ) : isError ? (
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: C.danger }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: C.danger, width: '100%' }}>
                     Có lỗi khi tải dữ liệu. Vui lòng thử lại.
                   </div>
                 ) : timeSeriesData.length === 0 ? (
@@ -256,10 +283,10 @@ const CompareTab = () => {
                 ) : (
                   <LineChart data={timeSeriesData} margin={{ top: 10, right: 20, bottom: 0, left: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
-                    <XAxis dataKey="displayTime" tick={{ fill: C.muted, fontSize: 11 }} axisLine={false} tickLine={false} />
-                    <YAxis tick={{ fill: C.muted, fontSize: 11 }} axisLine={false} tickLine={false} domain={[0, 'dataMax + 30']} />
+                    <XAxis dataKey="displayTime" tick={{ fill: C.muted, fontSize: 13 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fill: C.muted, fontSize: 13 }} axisLine={false} tickLine={false} domain={[0, 'dataMax + 30']} />
                     <Tooltip content={<DarkTooltip />} />
-                    <Legend iconType="circle" wrapperStyle={{ fontSize: 12, paddingTop: 10 }} />
+                    <Legend iconType="circle" wrapperStyle={{ fontSize: 14, paddingTop: 10 }} />
                     {renderingProvinces.map(({ id, label, color }) => {
                       if (visibleState[id] === false) return null;
                       return (
@@ -283,11 +310,11 @@ const CompareTab = () => {
 
           {/* Radar + Bảng thống kê */}
           <section>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start' }}>
+            <div className="responsive-grid grid-cols-2" style={{ alignItems: 'start' }}>
               <div style={{ ...glassCard }}>
                 <SectionHeader
-                  title="Radar cơ cấu thành phần"
-                  sub="Giá trị đo mới nhất của 7 biến môi trường"
+                  title="Radar cơ cấu thành phần (% QCVN)"
+                  sub="Giá trị đo mới nhất quy đổi theo tỷ lệ % Quy chuẩn Việt Nam"
                 />
                 <ResponsiveContainer width="100%" height={280}>
                   {detailQueries.some(q => q.isLoading) ? (
@@ -296,8 +323,8 @@ const CompareTab = () => {
                     </div>
                   ) : (
                     <RadarChart data={radarChartData}>
-                      <PolarGrid stroke="rgba(255,255,255,0.08)" />
-                      <PolarAngleAxis dataKey="metric" tick={{ fill: C.muted, fontSize: 11 }} />
+                      <PolarGrid stroke={C.border} />
+                      <PolarAngleAxis dataKey="metric" tick={{ fill: C.muted, fontSize: 13 }} />
                       <PolarRadiusAxis angle={30} domain={[0, 'auto']} tick={{ fill: C.muted, fontSize: 9 }} />
                       {renderingProvinces.map(({ id, label, color }) => {
                         if (visibleState[id] === false) return null;
@@ -313,8 +340,25 @@ const CompareTab = () => {
                           />
                         );
                       })}
-                      <Tooltip content={<DarkTooltip />} />
-                      <Legend iconType="square" wrapperStyle={{ fontSize: 11 }} />
+                      <Tooltip 
+                        content={({ active, payload, label }) => {
+                          if (!active || !payload?.length) return null;
+                          return (
+                            <div style={{background:"#0d1626",border:`1px solid rgba(56,189,248,0.25)`,borderRadius:10,padding:"10px 14px",fontSize: 14,color:C.text,...monoFont}}>
+                              <p style={{color:C.muted,marginBottom:4}}>{label} (% so với quy chuẩn)</p>
+                              {payload.map((p,i)=>{
+                                const pid = p.dataKey.replace('province_', '');
+                                return (
+                                  <p key={i} style={{color:p.color,margin:"2px 0"}}>
+                                    {p.name}: <strong>{p.value}%</strong> <span style={{color: C.muted}}>(Thực tế: {p.payload[`raw_${pid}`]})</span>
+                                  </p>
+                                );
+                              })}
+                            </div>
+                          );
+                        }} 
+                      />
+                      <Legend iconType="square" wrapperStyle={{ fontSize: 13 }} />
                     </RadarChart>
                   )}
                 </ResponsiveContainer>
@@ -326,40 +370,42 @@ const CompareTab = () => {
                 </div>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <thead>
-                    <tr style={{ background: 'rgba(255,255,255,0.03)' }}>
-                      <th style={{ padding: '14px 20px', textAlign: 'left', color: C.muted, fontSize: 12, ...headFont }}>
-                        Chỉ số
+                    <tr style={{ borderBottom: `1px solid ${C.border}` }}>
+                      <th style={{ padding: '14px 20px', textAlign: 'left', color: C.muted, fontSize: 14, ...headFont }}>
+                        Tỉnh/Thành phố
                       </th>
-                      {renderingProvinces.map(({ id, label, color }) => (
-                        <th key={id} style={{ padding: '14px 20px', textAlign: 'center', color, fontSize: 13, ...headFont }}>
-                          {label}
+                      {[
+                        { key: 'min', label: 'Thấp nhất' },
+                        { key: 'max', label: 'Cao nhất' },
+                        { key: 'mean', label: 'Trung bình' },
+                        { key: 'std', label: 'Độ lệch chuẩn' }
+                      ].map(metric => (
+                        <th key={metric.key} style={{ padding: '14px 20px', textAlign: 'center', color: C.muted, fontSize: 14, ...headFont }}>
+                          {metric.label}
                         </th>
                       ))}
                     </tr>
                   </thead>
                   <tbody>
-                    {[
-                      { key: 'min', label: 'Thấp nhất (Min)' },
-                      { key: 'max', label: 'Cao nhất (Max)' },
-                      { key: 'mean', label: 'Trung bình (Mean)' },
-                      { key: 'std', label: 'Độ lệch chuẩn (Std)' },
-                    ].map((metricRow, idx) => (
-                      <tr key={idx} style={{ borderTop: '1px solid rgba(255,255,255,0.04)' }}>
-                        <td style={{ padding: '12px 20px', color: C.muted, fontSize: 13, ...headFont }}>
-                          {metricRow.label}
-                        </td>
-                        {renderingProvinces.map(({ id }) => {
-                          const provStat = statistics.find(s => String(s.province_id) === id);
-                          const rawValue = provStat ? provStat[metricRow.key] : null;
-                          const displayValue = typeof rawValue === 'number' ? rawValue.toFixed(1) : 'N/A';
-                          return (
-                            <td key={id} style={{ padding: '12px 20px', textAlign: 'center', color: '#fff', fontSize: 13, fontWeight: 600, ...monoFont }}>
-                              {displayValue}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    ))}
+                    {renderingProvinces.map(({ id, label, color }) => {
+                      const provStat = statistics.find(s => String(s.province_id) === id);
+                      return (
+                        <tr key={id} style={{ borderBottom: `1px solid ${C.border}` }}>
+                          <td style={{ padding: '12px 20px', color, fontSize: 15, fontWeight: 600, ...headFont }}>
+                            {label}
+                          </td>
+                          {['min', 'max', 'mean', 'std'].map(metricKey => {
+                            const rawValue = provStat ? provStat[metricKey] : null;
+                            const displayValue = typeof rawValue === 'number' ? rawValue.toFixed(1) : 'N/A';
+                            return (
+                              <td key={metricKey} style={{ padding: '12px 20px', textAlign: 'center', color: C.text, fontSize: 15, fontWeight: 500, ...monoFont }}>
+                                {displayValue}
+                              </td>
+                            );
+                          })}
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

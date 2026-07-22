@@ -7,7 +7,7 @@ export function useWebSocket() {
 
     useEffect(() => {
         // Mở kết nối WebSocket
-        const wsBase = import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:8000';
+        const wsBase = import.meta.env.VITE_WS_BASE_URL || 'ws://localhost:8080';
         const ws = new WebSocket(`${wsBase}/api/v1/dashboard/ws/realtime`);
         wsRef.current = ws;
 

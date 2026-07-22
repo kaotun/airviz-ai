@@ -29,12 +29,12 @@ interface FilterState {
   resetFilters:    () => void
 }
 
-const latestDate = new Date('2024-12-31T00:00:00')
+const latestDate = new Date('2026-07-06T00:00:00')
 const today      = format(latestDate, 'yyyy-MM-dd')
 const thirtyDaysAgo = format(subDays(latestDate, 30), 'yyyy-MM-dd')
 
 export const useFilterStore = create<FilterState>((set) => ({
-  startDate:            thirtyDaysAgo,
+  startDate:            today,
   endDate:              today,
   selectedProvinces:    [],
   selectedMetric:       'pm2_5',
@@ -62,7 +62,7 @@ export const useFilterStore = create<FilterState>((set) => ({
 
   resetFilters: () =>
     set({
-      startDate:            thirtyDaysAgo,
+      startDate:            today,
       endDate:              today,
       selectedProvinces:    [],
       selectedMetric:       'pm2_5',

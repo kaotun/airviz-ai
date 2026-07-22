@@ -57,3 +57,23 @@ export const analyticsApi = {
     end_date: string
   }) => api.get('/analytics/correlation', { params }).then(r => r.data),
 }
+
+export const aiApi = {
+  /** Gửi câu hỏi → AI phân loại intent + sinh SQL hoặc trả lời trực tiếp */
+  chat: (params: {
+    message: string
+    session_id?: string
+    context?: Record<string, unknown>
+  }) => api.post('/ai/chat', params).then(r => r.data),
+
+  /** Thực thi SQL sau khi người dùng Approve */
+  execute: (params: { log_id: string; approved_by?: string }) =>
+    api.post('/ai/execute', params).then(r => r.data),
+
+  /** Lấy lịch sử chat theo session */
+  getLogs: (sessionId: string, limit = 20) =>
+    api.get(`/ai/logs/${sessionId}`, { params: { limit } }).then(r => r.data),
+
+  /** Kiểm tra Gemini API connection */
+  health: () => api.get('/ai/health').then(r => r.data),
+}
