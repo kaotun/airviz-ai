@@ -75,31 +75,56 @@ async def get_aqi_trend(
     province_id: int | None = None,
 ) -> list[dict]:
     """
-    Xu hướng AQI theo ngày (cho line chart).
-    Nếu province_id = None → trung bình toàn quốc.
+    Xu hướng AQI. Nếu start_date == end_date, lấy theo từng giờ (24 điểm).
+    Nếu nhiều ngày, lấy trung bình theo ngày.
     """
-    if province_id:
-        rows = await pool.fetch(
-            """
-            SELECT day, ROUND(aqi_avg::NUMERIC, 1) AS aqi
-            FROM daily_aqi
-            WHERE day >= $1 AND day <= $2
-              AND province_id = $3
-            ORDER BY day
-            """,
-            start_date, end_date, province_id,
-        )
+    if start_date == end_date:
+        if province_id:
+            rows = await pool.fetch(
+                """
+                SELECT DATE_TRUNC('hour', time) AS day, ROUND(AVG(european_aqi)::NUMERIC, 1) AS aqi
+                FROM env_readings
+                WHERE time >= $1::date AND time < $1::date + INTERVAL '1 day'
+                  AND province_id = $2
+                GROUP BY DATE_TRUNC('hour', time)
+                ORDER BY day
+                """,
+                start_date, province_id,
+            )
+        else:
+            rows = await pool.fetch(
+                """
+                SELECT DATE_TRUNC('hour', time) AS day, ROUND(AVG(european_aqi)::NUMERIC, 1) AS aqi
+                FROM env_readings
+                WHERE time >= $1::date AND time < $1::date + INTERVAL '1 day'
+                GROUP BY DATE_TRUNC('hour', time)
+                ORDER BY day
+                """,
+                start_date,
+            )
     else:
-        rows = await pool.fetch(
-            """
-            SELECT day, ROUND(AVG(aqi_avg)::NUMERIC, 1) AS aqi
-            FROM daily_aqi
-            WHERE day >= $1 AND day <= $2
-            GROUP BY day
-            ORDER BY day
-            """,
-            start_date, end_date,
-        )
+        if province_id:
+            rows = await pool.fetch(
+                """
+                SELECT day, ROUND(aqi_avg::NUMERIC, 1) AS aqi
+                FROM daily_aqi
+                WHERE day >= $1 AND day <= $2
+                  AND province_id = $3
+                ORDER BY day
+                """,
+                start_date, end_date, province_id,
+            )
+        else:
+            rows = await pool.fetch(
+                """
+                SELECT day, ROUND(AVG(aqi_avg)::NUMERIC, 1) AS aqi
+                FROM daily_aqi
+                WHERE day >= $1 AND day <= $2
+                GROUP BY day
+                ORDER BY day
+                """,
+                start_date, end_date,
+            )
     return [dict(r) for r in rows]
 
 
@@ -116,6 +141,8 @@ async def get_latest_aqi_all_provinces(pool: asyncpg.Pool) -> list[dict]:
             province_id,
             european_aqi  AS aqi,
             pm2_5,
+            pm10,
+            ozone,
             time
         FROM env_readings
         WHERE time >= (SELECT MAX(time) FROM env_readings) - INTERVAL '6 hours'

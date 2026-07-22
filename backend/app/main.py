@@ -46,11 +46,24 @@ async def lifespan(app: FastAPI):
     from app.cache import redis as cache
     await cache.init()
 
+    # Khởi động Background Scheduler để cập nhật dữ liệu realtime
+    from apscheduler.schedulers.background import BackgroundScheduler
+    import sys
+    sys.path.append(os.path.join(os.path.dirname(__file__), '../../scripts'))
+    import update_realtime
+
+    scheduler = BackgroundScheduler()
+    # Chạy cập nhật tự động mỗi 1 giờ
+    scheduler.add_job(update_realtime.run, 'interval', hours=1, id='realtime_sync')
+    scheduler.start()
+    log.info("Đã khởi động Background Scheduler (Realtime Sync mỗi 1 giờ)")
+
     log.info("═" * 50)
     yield  # ← app chạy ở đây
 
     # Shutdown
     log.info("Đang tắt backend...")
+    scheduler.shutdown()
     await db_conn.close_pool(pool)
     
     from app.cache import redis as cache

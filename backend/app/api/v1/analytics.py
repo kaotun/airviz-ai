@@ -4,7 +4,7 @@ GET /api/v1/analytics/anomalies  — Z-score anomaly detection
 GET /api/v1/analytics/correlation — Pearson correlation matrix
 """
 
-from datetime import date
+from datetime import date, timedelta
 from typing import Literal
 
 import pandas as pd
@@ -25,26 +25,47 @@ async def get_anomalies(
     threshold: float = Query(2.5, ge=1.0, le=5.0, description="Ngưỡng |z-score|"),
     start_date: date = Query(..., description="Ngày bắt đầu (YYYY-MM-DD)"),
     end_date: date   = Query(..., description="Ngày kết thúc (YYYY-MM-DD)"),
+    pool=Depends(get_pool),
 ):
     """
     Phát hiện các điểm đo lường bất thường bằng Rolling Z-score 7 ngày.
-
-    - **province_id**: Lọc theo tỉnh. Nếu bỏ trống sẽ phân tích toàn quốc.
-    - **metric**: Biến đo lường cần phân tích (mặc định: pm2_5).
-    - **threshold**: Ngưỡng |z-score| để coi là bất thường (mặc định: 2.5σ).
-      - `|z| > 2.5` → Cao
-      - `|z| > 3.5` → Rất cao
-    - **start_date / end_date**: Khoảng thời gian cần phân tích.
     """
-    # TODO Phase 2: query DB → pandas → analytics_service.detect_anomalies()
-    # Trả về stub để frontend làm việc song song
+    if (end_date - start_date).days > 366:
+        raise HTTPException(status_code=400, detail="Khoảng ngày tối đa cho phép: 366.")
+
+    # Fetch thêm 7 ngày trước để đủ dữ liệu rolling window (168 giờ)
+    fetch_start = start_date - timedelta(days=7)
+    
+    rows = await queries.get_raw_readings_for_analytics(pool, fetch_start, end_date, province_id)
+    if not rows:
+        return {
+            "metric": metric, "threshold": threshold, "province_id": province_id,
+            "period": {"start": str(start_date), "end": str(end_date)},
+            "anomalies": [], "total": 0,
+        }
+
+    df = pd.DataFrame(rows)
+    try:
+        all_anomalies = analytics_service.detect_anomalies(df, metric=metric, threshold=threshold)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
+    # Lọc lại anomalies nằm trong khoảng start_date -> end_date
+    valid_anomalies = []
+    start_str = start_date.isoformat()
+    end_str = (end_date + timedelta(days=1)).isoformat()
+    
+    for a in all_anomalies:
+        if start_str <= a["time"] < end_str:
+            valid_anomalies.append(a)
+
     return {
         "metric": metric,
         "threshold": threshold,
         "province_id": province_id,
         "period": {"start": str(start_date), "end": str(end_date)},
-        "anomalies": [],   # sẽ có data thật sau Phase 2
-        "total": 0,
+        "anomalies": valid_anomalies,
+        "total": len(valid_anomalies),
     }
 
 

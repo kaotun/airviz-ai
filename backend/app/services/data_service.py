@@ -58,6 +58,8 @@ async def get_map_data(pool: asyncpg.Pool) -> dict:
             "longitude":     info.get("longitude"),
             "aqi":           row["aqi"],
             "pm2_5":         row["pm2_5"],
+            "pm10":          row["pm10"],
+            "ozone":         row["ozone"],
             "time":          row["time"].isoformat() if row["time"] else None,
             "aqi_level":     _classify_aqi(row["aqi"]),
         })
